@@ -1,0 +1,7 @@
+streamlit==1.12.2
+requests==2.26.0
+fastapi==0.70.0
+uvicorn==0.15.0
+SQLAlchemy==1.4.26
+Pillow==8.4.0 
+altair==4.2.0

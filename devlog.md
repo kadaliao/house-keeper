@@ -643,3 +643,55 @@
 
 ### 涉及文件
 - frontend/src/components/layout/MainLayout.js (修改)
+
+## 2025-03-12 修复位置管理页面点击错误
+
+### 会话目标
+修复位置管理页面中点击位置节点时出现的错误。
+
+### 实现功能
+- 修复了位置节点点击事件处理
+- 添加了节点选择状态跟踪
+
+### 关键技术决策
+- 在TreeView组件中添加onNodeSelect事件处理
+- 实现节点选中状态管理
+
+### 问题解决方案
+- 通过分析用户反馈和界面设计，确定问题出在位置节点点击事件未处理
+- 添加selectedNode状态变量来跟踪当前选中的节点
+- 实现handleNodeSelect函数来处理节点点击事件
+- 在TreeView组件中添加selected属性和onNodeSelect事件处理函数
+
+### 采用技术栈
+- 前端：React, Material-UI, React状态管理
+
+### 涉及文件
+- frontend/src/pages/locations/LocationsPage.js (修改)
+
+## 2025-03-12 修复TreeView组件唯一ID问题
+
+### 会话目标
+修复位置管理页面中MUI X TreeView组件的唯一ID错误。
+
+### 实现功能
+- 解决了TreeView组件中"Two items were provided with the same id: undefined"错误
+- 确保树形结构中的每个节点都有唯一的ID，即使后端数据中的ID为undefined
+- 提升了位置树视图的稳定性和可靠性
+
+### 关键技术决策
+- 在构建树形结构时为每个节点生成唯一ID（如果不存在）
+- 在渲染TreeItem时确保每个节点都有唯一的key和nodeId
+- 在点击事件处理中添加ID存在性检查
+
+### 问题解决方案
+- 分析错误信息，确定问题是TreeView组件中有节点的ID为undefined
+- 修改buildLocationTree函数，确保生成的每个节点都有唯一ID
+- 在renderTreeNodes函数中添加ID验证逻辑
+- 在按钮点击事件中添加默认值处理，避免传递undefined
+
+### 采用技术栈
+- 前端：React, Material-UI, MUI X Tree View组件
+
+### 涉及文件
+- frontend/src/pages/locations/LocationsPage.js (修改)

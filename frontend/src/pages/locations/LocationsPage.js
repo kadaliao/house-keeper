@@ -242,10 +242,11 @@ const LocationsPage = () => {
   const buildLocationTree = (parentId = null) => {
     return locations
       .filter(location => location.parent_id === parentId)
-      .map(location => {
+      .map((location, index) => {
         const children = buildLocationTree(location.id);
         return {
           ...location,
+          id: location.id || `node-${parentId}-${index}`, // 确保每个节点都有唯一ID
           children: children.length > 0 ? children : []
         };
       });
@@ -253,10 +254,10 @@ const LocationsPage = () => {
 
   // 渲染位置树形节点
   const renderTreeNodes = (nodes) => {
-    return nodes.map((node) => (
+    return nodes.map((node, index) => (
       <TreeItem 
-        key={node.id} 
-        nodeId={node.id.toString()} 
+        key={node.id || `temp-id-${index}`} 
+        nodeId={(node.id || `temp-id-${index}`).toString()} 
         label={
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -270,7 +271,7 @@ const LocationsPage = () => {
                   color="primary"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleOpenAddDialog(node.id);
+                    handleOpenAddDialog(node.id || '');
                   }}
                 >
                   <AddIcon />
@@ -294,7 +295,7 @@ const LocationsPage = () => {
                   color="error"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDeleteLocation(node.id);
+                    handleDeleteLocation(node.id || '');
                   }}
                 >
                   <DeleteIcon />

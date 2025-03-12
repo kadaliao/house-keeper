@@ -468,3 +468,39 @@
   - docker-compose.test.yml
   - docker-compose.prod.yml
   - docker-compose.build.yml 
+
+## 2025-03-12 Docker Compose 配置问题修复
+
+### 会话目标
+修复Docker Compose配置中的冲突问题和过时属性警告。
+
+### 实现功能
+- 解决了服务冲突问题（`services.test-db conflicts with imported resource`）
+- 移除了所有配置文件中过时的 `version` 属性
+- 简化了入口文件，确保不重复定义服务
+
+### 关键技术决策
+- 完全使用 include 和 extends 机制，避免重复定义服务
+- 移除所有配置文件中的 `version` 属性（在新版Docker Compose中已废弃）
+- 保持清晰的配置结构和入口文件
+
+### 问题解决方案
+- 分析错误消息，确定问题是由于在主文件和导入文件中重复定义服务导致
+- 简化入口文件，仅保留 include 指令
+- 删除原先 docker-compose.test.yml 中的服务定义
+- 移除所有配置文件中的 version 属性
+
+### 采用技术栈
+- Docker Compose v2+
+- Docker 容器化
+
+### 涉及文件
+- docker-compose-config/base.yml
+- docker-compose-config/dev.yml
+- docker-compose-config/test.yml
+- docker-compose-config/prod.yml
+- docker-compose-config/build.yml
+- docker-compose.yml
+- docker-compose.test.yml
+- docker-compose.prod.yml
+- docker-compose.build.yml 

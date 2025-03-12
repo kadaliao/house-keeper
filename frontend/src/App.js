@@ -3,6 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { zhCN } from '@mui/material/locale';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import zhLocale from 'date-fns/locale/zh-CN';
 
 // Contexts
 import { AuthProvider } from './contexts/AuthContext';
@@ -235,26 +238,80 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AuthProvider>
-        <Router>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            
-            <Route element={<ProtectedRoute />}>
-              <Route element={<MainLayout />}>
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/items" element={<ItemsPage />} />
-                <Route path="/locations" element={<LocationsPage />} />
-                <Route path="/reminders" element={<RemindersPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-              </Route>
-            </Route>
-          </Routes>
-        </Router>
-      </AuthProvider>
+      <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhLocale}>
+        <AuthProvider>
+          <Router>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              
+              <Route 
+                path="/dashboard" 
+                element={
+                  <ProtectedRoute>
+                    <MainLayout>
+                      <DashboardPage />
+                    </MainLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route 
+                path="/items" 
+                element={
+                  <ProtectedRoute>
+                    <MainLayout>
+                      <ItemsPage />
+                    </MainLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route 
+                path="/locations" 
+                element={
+                  <ProtectedRoute>
+                    <MainLayout>
+                      <LocationsPage />
+                    </MainLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route 
+                path="/reminders" 
+                element={
+                  <ProtectedRoute>
+                    <MainLayout>
+                      <RemindersPage />
+                    </MainLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route 
+                path="/settings" 
+                element={
+                  <ProtectedRoute>
+                    <MainLayout>
+                      <SettingsPage />
+                    </MainLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route 
+                path="/profile" 
+                element={
+                  <ProtectedRoute>
+                    <MainLayout>
+                      <ProfilePage />
+                    </MainLayout>
+                  </ProtectedRoute>
+                }
+              />
+              
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </Router>
+        </AuthProvider>
+      </LocalizationProvider>
     </ThemeProvider>
   );
 }

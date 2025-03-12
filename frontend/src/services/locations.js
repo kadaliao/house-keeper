@@ -1,36 +1,91 @@
 import api from './api';
 
 export const getLocations = async (params = {}) => {
-  const response = await api.get('/locations', { params });
-  return response.data;
+  try {
+    const response = await api.get('/locations', { params });
+    return response.data;
+  } catch (error) {
+    console.error('获取位置列表失败:', error);
+    throw error;
+  }
 };
 
 export const getLocationTree = async () => {
-  const response = await api.get('/locations/tree');
-  return response.data;
+  try {
+    const response = await api.get('/locations/tree');
+    return response.data;
+  } catch (error) {
+    console.error('获取位置树失败:', error);
+    throw error;
+  }
 };
 
 export const getLocation = async (id) => {
-  const response = await api.get(`/locations/${id}`);
-  return response.data;
+  if (!id) {
+    throw new Error('位置ID不能为空');
+  }
+  
+  try {
+    const response = await api.get(`/locations/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error(`获取位置详情失败 (ID: ${id}):`, error);
+    throw error;
+  }
 };
 
 export const createLocation = async (locationData) => {
-  const response = await api.post('/locations', locationData);
-  return response.data;
+  if (!locationData || !locationData.name) {
+    throw new Error('位置名称不能为空');
+  }
+  
+  try {
+    const response = await api.post('/locations', locationData);
+    return response.data;
+  } catch (error) {
+    console.error('创建位置失败:', error, locationData);
+    throw error;
+  }
 };
 
 export const updateLocation = async (id, locationData) => {
-  const response = await api.put(`/locations/${id}`, locationData);
-  return response.data;
+  if (!id) {
+    throw new Error('位置ID不能为空');
+  }
+  
+  if (!locationData || !locationData.name) {
+    throw new Error('位置名称不能为空');
+  }
+  
+  try {
+    const response = await api.put(`/locations/${id}`, locationData);
+    return response.data;
+  } catch (error) {
+    console.error(`更新位置失败 (ID: ${id}):`, error, locationData);
+    throw error;
+  }
 };
 
 export const deleteLocation = async (id) => {
-  const response = await api.delete(`/locations/${id}`);
-  return response.data;
+  if (!id) {
+    throw new Error('位置ID不能为空');
+  }
+  
+  try {
+    const response = await api.delete(`/locations/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error(`删除位置失败 (ID: ${id}):`, error);
+    throw error;
+  }
 };
 
 export const getLocationsByParent = async (parentId) => {
-  const response = await api.get('/locations', { params: { parent_id: parentId } });
-  return response.data;
+  try {
+    const response = await api.get('/locations', { params: { parent_id: parentId } });
+    return response.data;
+  } catch (error) {
+    console.error(`获取子位置失败 (父ID: ${parentId}):`, error);
+    throw error;
+  }
 }; 

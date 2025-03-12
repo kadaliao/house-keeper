@@ -8,7 +8,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true,
+  withCredentials: false,
 });
 
 // Request interceptor for adding the auth token
@@ -18,6 +18,7 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log('API请求:', config.url, config.headers);
     return config;
   },
   (error) => Promise.reject(error)
@@ -25,8 +26,12 @@ api.interceptors.request.use(
 
 // Response interceptor for handling errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('API响应成功:', response.config.url);
+    return response;
+  },
   (error) => {
+    console.error('API响应错误:', error.config?.url, error.message, error.response?.status);
     // Handle 401 Unauthorized errors
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('token');

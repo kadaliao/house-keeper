@@ -644,54 +644,37 @@
 ### 涉及文件
 - frontend/src/components/layout/MainLayout.js (修改)
 
-## 2025-03-12 修复位置管理页面点击错误
+## 2025-03-15 数据库连接问题修复
 
 ### 会话目标
-修复位置管理页面中点击位置节点时出现的错误。
+解决后端容器启动时出现的"role root does not exist"错误，确保后端成功连接到PostgreSQL数据库。
 
 ### 实现功能
-- 修复了位置节点点击事件处理
-- 添加了节点选择状态跟踪
+- 实现了PostgreSQL数据库容器自动创建root用户的初始化脚本
+- 增强了后端启动脚本，增加数据库连接检查和重试机制
+- 优化了Alembic迁移配置，确保使用正确的数据库连接信息
 
 ### 关键技术决策
-- 在TreeView组件中添加onNodeSelect事件处理
-- 实现节点选中状态管理
+- 在PostgreSQL容器中使用初始化脚本自动创建所需的用户
+- 在后端容器中安装PostgreSQL客户端工具，用于数据库连接测试
+- 标准化环境变量配置，确保所有组件使用一致的数据库连接信息
 
 ### 问题解决方案
-- 通过分析用户反馈和界面设计，确定问题出在位置节点点击事件未处理
-- 添加selectedNode状态变量来跟踪当前选中的节点
-- 实现handleNodeSelect函数来处理节点点击事件
-- 在TreeView组件中添加selected属性和onNodeSelect事件处理函数
+- 分析发现问题原因：Docker容器中的应用默认使用root用户运行，但PostgreSQL中并不存在对应的用户账号
+- 创建初始化脚本(01-init-users.sh)，在数据库启动时自动创建root用户
+- 增强后端启动脚本(start.sh)，添加数据库连接检查和错误处理
+- 更新Alembic环境配置，确保迁移时使用正确的数据库URL
 
 ### 采用技术栈
-- 前端：React, Material-UI, React状态管理
+- 后端：Python, FastAPI, Alembic
+- 数据库：PostgreSQL
+- 容器化：Docker, Docker Compose
+- 脚本：Bash
 
 ### 涉及文件
-- frontend/src/pages/locations/LocationsPage.js (修改)
-
-## 2025-03-12 修复TreeView组件唯一ID问题
-
-### 会话目标
-修复位置管理页面中MUI X TreeView组件的唯一ID错误。
-
-### 实现功能
-- 解决了TreeView组件中"Two items were provided with the same id: undefined"错误
-- 确保树形结构中的每个节点都有唯一的ID，即使后端数据中的ID为undefined
-- 提升了位置树视图的稳定性和可靠性
-
-### 关键技术决策
-- 在构建树形结构时为每个节点生成唯一ID（如果不存在）
-- 在渲染TreeItem时确保每个节点都有唯一的key和nodeId
-- 在点击事件处理中添加ID存在性检查
-
-### 问题解决方案
-- 分析错误信息，确定问题是TreeView组件中有节点的ID为undefined
-- 修改buildLocationTree函数，确保生成的每个节点都有唯一ID
-- 在renderTreeNodes函数中添加ID验证逻辑
-- 在按钮点击事件中添加默认值处理，避免传递undefined
-
-### 采用技术栈
-- 前端：React, Material-UI, MUI X Tree View组件
-
-### 涉及文件
-- frontend/src/pages/locations/LocationsPage.js (修改)
+- docker-compose-config/dev.yml (修改)
+- docker-init-scripts/01-init-users.sh (新增)
+- backend/start.sh (修改)
+- backend/Dockerfile (修改)
+- backend/alembic/env.py (修改)
+- backend/.env (修改)

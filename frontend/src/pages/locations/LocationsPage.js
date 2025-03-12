@@ -29,7 +29,8 @@ import {
   ListItemIcon,
   Collapse
 } from '@mui/material';
-import { TreeView, TreeItem } from '@mui/x-tree-view';
+import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
+import { TreeItem } from '@mui/x-tree-view/TreeItem';
 import { 
   Add as AddIcon, 
   Edit as EditIcon, 
@@ -69,7 +70,18 @@ const LocationsPage = () => {
       try {
         setLoading(true);
         const locationsData = await getLocations();
-        setLocations(locationsData);
+        
+        // 确保每个位置都有ID，对数据进行预处理
+        const processedData = locationsData.map((loc, index) => {
+          if (!loc.id) {
+            console.warn('发现没有ID的位置项:', loc);
+            // 使用随机字符串确保ID不会重复
+            return { ...loc, id: `missing-id-${index}-${Math.random().toString(36).substring(2, 10)}` };
+          }
+          return loc;
+        });
+        
+        setLocations(processedData);
         setError(null);
       } catch (err) {
         console.error('获取位置数据失败:', err);
@@ -97,16 +109,26 @@ const LocationsPage = () => {
     setFormData({
       name: '',
       description: '',
-      parent_id: parentId
+      parent_id: parentId || ''
     });
     setOpenDialog(true);
   };
 
   // 打开编辑位置对话框
   const handleOpenEditDialog = (location) => {
+    if (!location || !location.id) {
+      console.error('无效的位置对象:', location);
+      setSnackbar({
+        open: true,
+        message: '无法编辑位置，无效的位置数据',
+        severity: 'error'
+      });
+      return;
+    }
+    
     setEditingLocation(location);
     setFormData({
-      name: location.name,
+      name: location.name || '',
       description: location.description || '',
       parent_id: location.parent_id || ''
     });
@@ -134,11 +156,14 @@ const LocationsPage = () => {
         return;
       }
 
+      // 确保parent_id是有效值或null
       const locationData = {
         ...formData,
-        parent_id: formData.parent_id || null
+        parent_id: formData.parent_id && formData.parent_id !== '' ? formData.parent_id : null
       };
 
+      console.log('保存位置数据:', locationData);
+      
       let savedLocation;
       
       if (editingLocation) {
@@ -161,8 +186,28 @@ const LocationsPage = () => {
 
       // 更新位置列表
       const fetchLocations = async () => {
-        const locationsData = await getLocations();
-        setLocations(locationsData);
+        try {
+          const locationsData = await getLocations();
+          
+          // 确保每个位置都有ID，对数据进行预处理
+          const processedData = locationsData.map((loc, index) => {
+            if (!loc.id) {
+              console.warn('发现没有ID的位置项:', loc);
+              // 生成唯一ID，避免ID冲突
+              return { ...loc, id: `missing-id-${index}-${Math.random().toString(36).substring(2, 10)}` };
+            }
+            return loc;
+          });
+          
+          setLocations(processedData);
+        } catch (err) {
+          console.error('刷新位置列表失败:', err);
+          setSnackbar({
+            open: true,
+            message: '刷新位置列表失败，请刷新页面重试',
+            severity: 'error'
+          });
+        }
       };
       await fetchLocations();
 
@@ -238,76 +283,132 @@ const LocationsPage = () => {
     // 此处可以添加节点选择后的其他操作，比如显示详情等
   };
 
+  /**
+   * 重要：MUI X Tree View组件要求每个节点必须有唯一的ID
+   * 如果有节点没有ID或者ID重复，会导致渲染错误
+   * 下面的函数生成树形结构，确保每个节点都有唯一ID
+   * 对于没有ID的节点，会生成一个包含随机字符串的临时ID
+   * 这样可以避免"Two items were provided with the same id in the `items` prop: undefined"的错误
+   */
   // 构建位置树形结构
   const buildLocationTree = (parentId = null) => {
+    // 由于后端可能返回字符串或数字ID，需要兼容处理
+    const compareParentId = (locationParentId) => {
+      // 如果两者都是null或undefined，视为相等
+      if (locationParentId == null && parentId == null) {
+        return true;
+      }
+      
+      // 转换为字符串进行比较
+      return String(locationParentId) === String(parentId);
+    };
+    
     return locations
-      .filter(location => location.parent_id === parentId)
+      .filter(location => compareParentId(location.parent_id))
       .map((location, index) => {
         const children = buildLocationTree(location.id);
+        // 确保每个节点都有明确定义的ID
+        // 使用随机字符串确保ID不会重复，即使是undefined也不会导致冲突
+        const nodeId = location.id ? location.id.toString() : `temp-${parentId || 'root'}-${index}-${Math.random().toString(36).substring(2, 10)}`;
         return {
           ...location,
-          id: location.id || `node-${parentId}-${index}`, // 确保每个节点都有唯一ID
-          children: children.length > 0 ? children : []
+          id: nodeId,
+          children: children
         };
       });
   };
 
   // 渲染位置树形节点
   const renderTreeNodes = (nodes) => {
-    return nodes.map((node, index) => (
-      <TreeItem 
-        key={node.id || `temp-id-${index}`} 
-        nodeId={(node.id || `temp-id-${index}`).toString()} 
-        label={
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <LocationIcon color="primary" sx={{ mr: 1 }} />
-              <Typography variant="body1">{node.name}</Typography>
+    if (!nodes || !Array.isArray(nodes)) {
+      console.warn('节点无效:', nodes);
+      return null;
+    }
+    
+    return nodes.map((node, index) => {
+      if (!node) {
+        console.warn('发现无效节点，跳过渲染');
+        return null;
+      }
+      
+      // 确保节点有有效ID，并且与buildLocationTree中的ID生成逻辑保持一致
+      // 不再单独生成ID，直接使用节点已有的ID，确保不会与构建树时生成的ID冲突
+      const safeNodeId = node.id && node.id.toString();
+      
+      // 如果节点ID不存在，不渲染此节点，避免ID冲突
+      if (!safeNodeId) {
+        console.warn('跳过无ID节点渲染:', node);
+        return null;
+      }
+      
+      return (
+        <TreeItem 
+          key={safeNodeId} 
+          itemId={safeNodeId} 
+          label={
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <LocationIcon color="primary" sx={{ mr: 1 }} />
+                <Typography variant="body1">{node.name || '未命名位置'}</Typography>
+              </Box>
+              <Box>
+                <Tooltip title="添加子位置">
+                  <IconButton 
+                    size="small" 
+                    color="primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      try {
+                        handleOpenAddDialog(node.id);
+                      } catch (err) {
+                        console.error('添加子位置错误:', err);
+                      }
+                    }}
+                  >
+                    <AddIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="编辑">
+                  <IconButton 
+                    size="small" 
+                    color="primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      try {
+                        handleOpenEditDialog(node);
+                      } catch (err) {
+                        console.error('编辑位置错误:', err);
+                      }
+                    }}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="删除">
+                  <IconButton 
+                    size="small" 
+                    color="error"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      try {
+                        handleDeleteLocation(node.id);
+                      } catch (err) {
+                        console.error('删除位置错误:', err);
+                      }
+                    }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             </Box>
-            <Box>
-              <Tooltip title="添加子位置">
-                <IconButton 
-                  size="small" 
-                  color="primary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenAddDialog(node.id || '');
-                  }}
-                >
-                  <AddIcon />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="编辑">
-                <IconButton 
-                  size="small" 
-                  color="primary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenEditDialog(node);
-                  }}
-                >
-                  <EditIcon />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="删除">
-                <IconButton 
-                  size="small" 
-                  color="error"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteLocation(node.id || '');
-                  }}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </Tooltip>
-            </Box>
-          </Box>
-        }
-      >
-        {node.children.length > 0 && renderTreeNodes(node.children)}
-      </TreeItem>
-    ));
+          }
+        >
+          {node.children && Array.isArray(node.children) && node.children.length > 0 ? 
+            renderTreeNodes(node.children) : null}
+        </TreeItem>
+      );
+    });
   };
 
   // 获取位置树
@@ -354,13 +455,13 @@ const LocationsPage = () => {
         ) : (
           <Card variant="outlined" sx={{ mt: 2 }}>
             <CardContent>
-              <TreeView
+              <SimpleTreeView
                 defaultCollapseIcon={<ExpandMoreIcon />}
                 defaultExpandIcon={<ChevronRightIcon />}
-                expanded={expanded}
-                selected={selectedNode}
-                onNodeToggle={handleToggle}
-                onNodeSelect={handleNodeSelect}
+                expandedItems={expanded}
+                selectedItems={selectedNode}
+                onExpandedItemsChange={handleToggle}
+                onSelectedItemsChange={handleNodeSelect}
                 sx={{ 
                   flexGrow: 1, 
                   overflowY: 'auto',
@@ -372,7 +473,7 @@ const LocationsPage = () => {
                 }}
               >
                 {renderTreeNodes(locationTree)}
-              </TreeView>
+              </SimpleTreeView>
             </CardContent>
           </Card>
         )}

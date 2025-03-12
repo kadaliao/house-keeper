@@ -45,7 +45,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 const drawerWidth = 260;
 
-const MainLayout = () => {
+const MainLayout = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const { currentUser, logout } = useAuth();
@@ -433,7 +433,7 @@ const MainLayout = () => {
         }}
       >
         <Toolbar />
-        <Outlet />
+        {children}
       </Box>
     </Box>
   );

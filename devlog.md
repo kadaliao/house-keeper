@@ -1,0 +1,546 @@
+# 家庭物品管理系统开发日志
+
+## 2025-03-10 项目初始化
+
+### 会话目标
+创建家庭物品管理系统的MVP原型，包括后端API和前端界面。
+
+### 实现功能
+- 搭建了基础的项目结构，包括前端和后端
+- 实现了用户认证系统（注册、登录、个人资料）
+- 实现了物品管理功能（CRUD操作）
+- 实现了位置管理功能（CRUD操作，支持层级结构）
+- 实现了提醒管理功能（CRUD操作，支持重复提醒）
+- 实现了仪表盘统计功能
+
+### 关键技术决策
+- 采用前后端分离架构，后端使用FastAPI，前端使用React
+- 使用JWT进行用户认证
+- 使用SQLAlchemy作为ORM工具
+- 使用Material-UI作为前端UI组件库
+- 使用Recharts实现数据可视化
+
+### 问题解决方案
+- 通过使用Alembic进行数据库迁移，解决了数据库版本控制问题
+- 通过使用Pydantic模型，实现了API请求和响应的数据验证
+- 通过使用React Context，实现了全局状态管理
+
+### 采用技术栈
+- 后端：FastAPI, SQLAlchemy, PostgreSQL, JWT, Alembic
+- 前端：React, Material-UI, React Router, Axios, Recharts, Formik & Yup
+
+### 涉及文件
+- 后端：
+  - 数据库模型：User, Item, Location, Reminder
+  - API端点：auth, items, locations, reminders
+  - 核心功能：settings, security
+- 前端：
+  - 页面：LoginPage, RegisterPage, DashboardPage
+  - 组件：MainLayout, ProtectedRoute
+  - 服务：api, auth, items, locations, reminders 
+
+## 2025-03-11 容器化开发环境搭建
+
+### 会话目标
+为家庭物品管理系统搭建容器化的开发、测试和部署环境。
+
+### 实现功能
+- 创建了Docker容器化配置，支持开发、测试和生产环境
+- 实现了前后端服务的容器化部署
+- 配置了数据库容器和持久化存储
+- 添加了健康检查端点，确保容器正常运行
+- 设置了CI/CD工作流，支持自动化测试和部署
+
+### 关键技术决策
+- 采用多阶段构建（multi-stage builds）优化Docker镜像
+- 使用Docker Compose管理多容器应用
+- 为开发和生产环境创建不同的配置
+- 使用Nginx作为前端服务器，处理静态资源和API代理
+- 实现了健康检查机制，确保容器可靠性
+
+### 问题解决方案
+- 通过Nginx反向代理和CORS配置解决了跨域问题
+- 通过Docker网络配置解决了服务间通信问题
+- 通过环境变量注入解决了不同环境的配置问题
+- 通过卷挂载实现了数据持久化和开发时的热重载
+- 通过健康检查确保了服务的可用性监控
+
+### 采用技术栈
+- 容器化：Docker, Docker Compose
+- 服务器：Nginx
+- CI/CD：GitHub Actions
+- 监控：容器健康检查
+- 数据库：PostgreSQL (容器化)
+
+### 涉及文件
+- Docker配置：
+  - backend/Dockerfile
+  - frontend/Dockerfile
+  - frontend/nginx.conf
+  - docker-compose.yml
+  - docker-compose.prod.yml
+  - .dockerignore
+- CI/CD配置：
+  - .github/workflows/test.yml
+  - .github/workflows/deploy.yml
+- 后端更新：
+  - backend/app/api/endpoints/health.py
+  - backend/app/api/api.py (更新)
+- 环境配置：
+  - .env.prod.example 
+
+## 2025-03-11 健康检查端点问题修复
+
+### 会话目标
+解决后端容器启动时出现的 `ImportError: cannot import name 'health' from 'app.api.endpoints'` 错误。
+
+### 实现功能
+- 创建了缺失的健康检查端点文件 `backend/app/api/endpoints/health.py`
+- 保持了与已有的 `api_v1/endpoints/health.py` 相同的功能
+
+### 关键技术决策
+- 采用了复制现有 API v1 健康检查端点代码的方式，解决了导入路径不匹配问题
+- 保留了原有的 `/health` 和 `/health/db` 两个健康检查端点，确保兼容性
+
+### 问题解决方案
+- 通过分析错误日志，确定了问题是由于在 `api.py` 中导入的 `health` 模块在 `app/api/endpoints/` 目录下不存在
+- 发现实际的健康检查端点文件位于 `app/api/api_v1/endpoints/` 目录下
+- 通过在 `app/api/endpoints/` 目录下创建相同内容的 `health.py` 文件解决了问题
+
+### 采用技术栈
+- 后端：FastAPI
+- 容器化：Docker, Docker Compose
+
+### 涉及文件
+- 新增：backend/app/api/endpoints/health.py
+- 相关：backend/app/api/api.py, backend/app/api/api_v1/endpoints/health.py 
+
+## 2025-03-11 修复API路径不匹配问题
+
+### 会话目标
+解决注册和登录API调用404 Not Found错误。
+
+### 实现功能
+- 修复了前端API路径与后端API路径不匹配的问题
+- 确保前端API调用正确指向带有v1版本的后端API端点
+
+### 关键技术决策
+- 修改前端服务基础URL，从 `/api` 改为 `/api/v1` 匹配后端设置
+- 更新Docker容器环境变量配置，确保REACT_APP_API_URL路径正确
+
+### 问题解决方案
+- 通过查看后端设置发现API路径为 `/api/v1`
+- 而前端直接请求 `/api/auth/login` 和 `/api/auth/register`
+- 修改前端API服务基础URL和Docker环境变量配置解决问题
+
+### 采用技术栈
+- 前端：React, Axios
+- 容器化：Docker, Docker Compose
+
+### 涉及文件
+- frontend/src/services/api.js
+- docker-compose.yml 
+
+## 2025-03-11 前端构建性能优化
+
+### 会话目标
+解决前端构建过程缓慢的问题，优化生产环境构建性能。
+
+### 实现功能
+- 优化Dockerfile配置，提高前端构建速度
+- 创建专用的构建配置文件，提供更多资源
+- 实现自动化构建脚本，简化优化流程
+
+### 关键技术决策
+- 增加Node.js内存限制（--max-old-space-size=4096）
+- 优化npm缓存和网络设置，减少不必要的操作
+- 使用Docker资源限制，为构建提供更多资源
+- 分离构建过程和运行容器，提高效率
+
+### 问题解决方案
+- 通过.npmrc文件配置npm缓存和网络优化
+- 使用npm ci命令的优化选项（--prefer-offline --no-audit）
+- 创建专用的docker-compose.build.yml文件用于优化构建
+- 实现build-frontend.sh脚本，自动化优化构建流程
+
+### 采用技术栈
+- 前端：React, Node.js
+- 容器化：Docker, Docker Compose
+- 构建工具：npm, bash脚本
+
+### 涉及文件
+- frontend/Dockerfile（优化）
+- frontend/.npmrc（新增）
+- docker-compose.build.yml（新增）
+- scripts/build-frontend.sh（新增） 
+
+## 2025-03-11 前端构建脚本优化
+
+### 会话目标
+修复前端构建脚本中的错误，简化并提高构建流程可靠性。
+
+### 实现功能
+- 修复了构建脚本中获取Docker镜像ID的问题
+- 改进了构建流程，采用本地直接构建方式
+- 增强了错误处理和资源清理机制
+
+### 关键技术决策
+- 从基于Docker容器的构建方式转向本地直接构建
+- 保留Node.js内存限制优化（--max-old-space-size=4096）
+- 简化构建流程，减少中间环节和潜在故障点
+
+### 问题解决方案
+- 解决了"docker create requires at least 1 argument"错误
+- 通过本地构建避免Docker镜像ID获取问题
+- 添加错误处理和资源清理，提高脚本稳定性
+- 保留npm优化选项，确保构建性能
+
+### 采用技术栈
+- 前端：React, Node.js
+- 构建工具：npm, bash脚本
+
+### 涉及文件
+- scripts/build-frontend.sh（修改）
+- docker-compose.build.yml（保留但不再直接使用） 
+
+## 2025-03-11 数据库迁移问题修复
+
+### 会话目标
+解决后端启动时出现的 `psycopg2.errors.UndefinedTable: relation "user" does not exist` 错误。
+
+### 实现功能
+- 执行数据库迁移，创建必要的数据库表
+- 修复Alembic迁移配置中的数据库URL设置
+
+### 关键技术决策
+- 修改`alembic.ini`文件中的数据库URL，使其与docker-compose配置中的数据库名称一致
+- 使用Alembic执行数据库迁移
+
+### 问题解决方案
+- 分析错误日志，确定问题是数据库表尚未创建
+- 修正Alembic配置中的数据库连接URL
+- 使用`alembic upgrade head`命令执行所有待处理的迁移
+- 重启后端服务，确保更改生效
+
+### 采用技术栈
+- 后端：FastAPI, SQLAlchemy, Alembic, PostgreSQL
+- 容器化：Docker, Docker Compose
+
+### 涉及文件
+- `backend/alembic.ini`
+- `docker-compose.yml` 
+
+## 2025-03-11 提醒功能实现完善
+
+### 会话目标
+解决提醒功能中的缺失方法错误：`'CRUDReminder' object has no attribute 'get_due_reminders'` 和 `'CRUDReminder' object has no attribute 'get_upcoming_reminders'`。
+
+### 实现功能
+- 实现了获取到期提醒的功能 (`get_due_reminders`)
+- 实现了获取即将到期提醒的功能 (`get_upcoming_reminders`)
+- 实现了按物品ID查询提醒的功能 (`get_multi_by_item`)
+- 实现了标记提醒为已完成的功能 (`mark_completed`)
+
+### 关键技术决策
+- 使用SQLAlchemy查询过滤器针对日期范围进行筛选
+- 为提醒功能添加完整的CRUD操作支持
+- 使用UTC时间处理日期比较，确保全球范围内的一致性
+
+### 问题解决方案
+- 分析错误日志，确定缺失的CRUD方法
+- 根据API端点需求实现相应的CRUD操作
+- 修正方法名不匹配问题（`get_by_item_id` -> `get_multi_by_item`）
+- 实现`mark_completed`方法支持提醒状态更新
+
+### 采用技术栈
+- 后端：FastAPI, SQLAlchemy, PostgreSQL
+- 日期处理：Python datetime
+
+### 涉及文件
+- `backend/app/crud/crud_reminder.py` 
+
+## 2025-03-12 修复路由匹配问题并添加页面骨架
+
+### 会话目标
+解决前端导航时出现的 "No routes matched location" 警告问题，并为主要功能页面创建基础骨架。
+
+### 实现功能
+- 修复了导航到 /items、/locations、/reminders、/settings 和 /profile 路径时的路由不匹配警告
+- 创建了物品管理页面的基础骨架
+- 创建了位置管理页面的基础骨架
+- 创建了提醒管理页面的基础骨架
+- 创建了设置页面的基础骨架
+- 创建了个人资料页面的基础骨架
+
+### 关键技术决策
+- 在 App.js 中添加缺失的路由定义，确保所有导航链接都有对应的路由
+- 为每个功能模块创建单独的页面组件，以便后续功能实现
+- 使用 Material-UI 组件库构建页面布局和样式
+
+### 问题解决方案
+- 分析了控制台警告信息，确定了问题是由于导航菜单中存在链接指向未定义的路由路径
+- 创建了对应的页面组件和路由定义，解决了路由不匹配的警告
+- 为每个页面添加了基础布局和说明文本，为用户提供清晰的功能页面预览
+
+### 采用技术栈
+- 前端：React, React Router, Material-UI
+
+### 涉及文件
+- frontend/src/App.js
+- frontend/src/pages/items/ItemsPage.js
+- frontend/src/pages/locations/LocationsPage.js
+- frontend/src/pages/reminders/RemindersPage.js
+- frontend/src/pages/settings/SettingsPage.js
+- frontend/src/pages/profile/ProfilePage.js 
+
+## 2025-03-11 修复后端测试问题
+
+### 会话目标
+解决后端测试中的`ModuleNotFoundError: No module named 'app'`错误和异步测试问题。
+
+### 实现功能
+- 修复了测试环境中的模块导入路径问题
+- 解决了异步测试中的协程处理问题
+- 修改了User模型使用方式，从`full_name`改为`first_name`和`last_name`
+- 重写了测试方法，使用同步SQLite数据库进行单元测试
+
+### 关键技术决策
+- 设置`PYTHONPATH=/app`环境变量，确保模块导入路径正确
+- 修改`conftest.py`文件，正确处理异步会话和夹具
+- 使用内存SQLite数据库进行测试，提高测试速度和隔离性
+- 采用直接操作数据库的方式进行测试，避免API调用的复杂性
+
+### 问题解决方案
+- 通过设置`PYTHONPATH`解决了模块导入问题
+- 通过修改`crud_user.py`，处理`full_name`到`first_name`和`last_name`的转换
+- 通过重写测试方法，使用同步SQLite数据库避免异步问题
+- 通过直接验证数据库操作结果，简化测试流程
+
+### 采用技术栈
+- 后端：FastAPI, SQLAlchemy, pytest, pytest-asyncio
+- 数据库：SQLite (测试), PostgreSQL (生产)
+- 容器化：Docker, Docker Compose
+
+### 涉及文件
+- `backend/tests/conftest.py`
+- `backend/tests/api/test_auth.py`
+- `backend/app/crud/crud_user.py`
+- `backend/app/models/user.py` 
+
+## 2025-03-12 完善API测试
+
+### 会话目标
+完善后端API的测试用例，特别是认证相关的API端点测试。
+
+### 实现功能
+- 使用FastAPI的TestClient实现了真实HTTP请求的API测试
+- 测试了用户注册、登录、获取用户信息和更新用户信息等端点
+- 实现了包括成功和失败场景的完整测试覆盖
+
+### 关键技术决策
+- 从单纯测试数据库模型转向测试实际API端点
+- 使用setup_method和teardown_method为每个测试提供干净的测试环境
+- 通过依赖注入覆盖使用内存数据库进行测试
+
+### 问题解决方案
+- 解决测试隔离问题：每个测试方法前创建新的测试环境，之后清理
+- 实现完整API测试流程：先注册用户，再登录获取令牌，然后使用令牌测试其他端点
+- 依赖注入覆盖：确保测试使用内存数据库而不是实际数据库
+
+### 采用技术栈
+- 测试工具：pytest, pytest-asyncio
+- Web框架：FastAPI, TestClient
+- 数据库：SQLAlchemy, SQLite内存数据库
+
+### 涉及文件
+- backend/tests/api/test_auth.py 
+
+## 2025-03-12 API测试故障排除
+
+### 会话目标
+解决API测试中遇到的"no such table: users"错误，解决FastAPI测试中的依赖注入问题。
+
+### 实现功能
+- 添加了详细调试信息，跟踪测试环境中的表创建
+- 改进了测试依赖注入的方法，确保测试使用正确的数据库连接
+- 解决了异步SQLAlchemy会话与同步SQLite测试数据库之间的不兼容问题
+
+### 关键技术决策
+- 使用测试前后钩子（setup_method/teardown_method）正确管理测试环境
+- 使用内存SQLite数据库进行快速测试
+- 显式导入所有模型，确保SQLAlchemy元数据包含所有表定义
+
+### 问题解决方案
+- 通过详细日志确定表格已创建但查询时无法访问
+- 分析确定问题是SQLAlchemy异步会话与同步测试数据库不兼容
+- 通过调整依赖注入方式解决连接问题
+- 重新组织测试代码结构，简化测试流程
+
+### 采用技术栈
+- 测试工具：pytest, TestClient
+- 数据库：SQLite内存数据库
+- 依赖注入：FastAPI依赖覆盖
+
+### 涉及文件
+- backend/tests/api/test_auth.py 
+
+## 2025-03-12 建立专用测试数据库环境
+
+### 会话目标
+使用 docker-compose 建立专用的 PostgreSQL 测试数据库，解决异步 SQLAlchemy 与同步 SQLite 测试数据库之间的兼容性问题。
+
+### 实现功能
+- 创建了专用的 docker-compose.test.yml 配置文件，用于测试环境
+- 设置了专用的 PostgreSQL 测试数据库
+- 更新了测试配置，支持多种数据库环境（PostgreSQL 或 SQLite）
+- 改进了测试代码，使其完全支持异步操作和 PostgreSQL
+
+### 关键技术决策
+- 使用 PostgreSQL 作为测试数据库，与生产环境保持一致
+- 通过环境变量配置测试数据库连接，提高灵活性
+- 使用 asyncpg 作为异步 PostgreSQL 驱动
+- 分离测试环境和开发环境，避免相互干扰
+
+### 问题解决方案
+- 解决了异步 SQLAlchemy 与同步 SQLite 不兼容的问题
+- 通过使用同样的异步 PostgreSQL 数据库，确保测试环境与生产环境一致
+- 创建专用脚本简化测试启动过程
+- 自动处理测试环境的创建和清理
+
+### 采用技术栈
+- 数据库：PostgreSQL 13
+- 容器化：Docker, Docker Compose
+- 测试工具：pytest, pytest-asyncio
+- 数据库驱动：asyncpg, psycopg2-binary
+
+### 涉及文件
+- docker-compose.test.yml
+- backend/tests/conftest.py
+- backend/tests/api/test_auth.py
+- backend/requirements.txt
+- scripts/run_tests.sh 
+
+## 2025-03-12 后端代码同步化改造
+
+### 会话目标
+将后端代码中的异步操作改为同步操作，简化代码结构和执行流程。
+
+### 实现功能
+- 修改了数据库会话配置，移除了异步引擎和会话
+- 将CRUD基类中的异步方法改为同步方法
+- 修改了API依赖项中的异步函数为同步函数
+- 将API端点中的异步路由处理函数改为同步函数
+- 修改了健康检查API为同步实现
+
+### 关键技术决策
+- 移除了所有异步数据库操作，简化了代码结构
+- 使用同步SQLAlchemy会话和查询方法
+- 保持API接口不变，只修改内部实现
+
+### 问题解决方案
+- 通过移除异步代码，解决了异步/同步数据库兼容性问题
+- 简化了代码执行流程，减少了await/async关键字的使用
+- 保持了API接口的一致性，不影响前端调用
+
+### 采用技术栈
+- 后端：FastAPI, SQLAlchemy (同步模式), PostgreSQL, JWT, Alembic
+
+### 涉及文件
+- 数据库配置：app/db/session.py
+- API依赖：app/api/deps.py
+- CRUD基类：app/crud/base.py
+- 用户CRUD：app/crud/crud_user.py
+- API路由：app/api/api.py, app/api/endpoints/auth.py, app/api/endpoints/health.py 
+
+## 2025-03-12 测试文件同步化改造
+
+### 会话目标
+修改测试文件以适应后端代码的同步化改造，确保测试环境与生产环境一致。
+
+### 实现功能
+- 修改了测试配置文件，将异步会话和引擎改为同步版本
+- 将CRUD测试中的异步函数改为同步函数
+- 修改了API端点测试中的异步函数为同步函数
+- 更新了测试夹具，移除异步标记和依赖
+- 修改了requirements.txt，移除了异步相关依赖
+
+### 关键技术决策
+- 使用同步SQLAlchemy会话和查询方法取代异步版本
+- 保持现有测试逻辑和验证方法不变，只修改实现方式
+- 使用同步数据库操作简化测试流程
+
+### 问题解决方案
+- 通过统一使用同步操作，解决了测试环境中的异步/同步兼容性问题
+- 简化了测试代码，移除不必要的async/await关键字
+- 通过同步测试环境与生产环境保持一致，提高测试可靠性
+
+### 采用技术栈
+- 测试工具：pytest, fastapi.testclient.TestClient
+- 数据库：SQLAlchemy (同步模式), SQLite (测试), PostgreSQL (生产)
+
+### 涉及文件
+- 测试配置：tests/conftest.py
+- CRUD测试：tests/crud/test_user.py
+- API测试：tests/api/test_auth.py, tests/api/test_items.py, tests/api/test_locations.py, tests/api/test_reminders.py
+- 项目依赖：requirements.txt 
+
+## 2025-03-12 修复测试问题
+
+### 会话目标
+修复后端测试中的字段名称错误和API路径不匹配问题。
+
+### 实现功能
+- 修复了测试中使用的错误字段名称（purchase_price → price）
+- 修复了API路径不一致问题，统一使用 `/api/v1/` 前缀
+- 确保所有测试正确通过
+
+### 关键技术决策
+- 保持模型字段名与测试一致，避免使用不存在的字段名
+- 统一使用 `/api/v1/` 作为API前缀，保持前后端一致性
+- 在测试环境中复制生产环境的API路径配置
+
+### 问题解决方案
+- 通过检查 Item 模型定义，确认正确字段名为 price 而非 purchase_price
+- 在测试文件中统一修改字段名称
+- 更新测试中使用的API路径，确保与后端路由配置一致
+- 修复 Location 模型中 user_id 错误使用问题，改为正确的 owner_id
+
+### 采用技术栈
+- 测试工具：pytest, docker-compose
+- 数据库：PostgreSQL (测试专用容器)
+- 后端框架：FastAPI, SQLAlchemy
+
+### 涉及文件
+- backend/tests/api/test_items.py
+- backend/tests/api/test_reminders.py
+- backend/tests/api/test_locations.py 
+
+## 2025-03-12 修复健康检查端点
+
+### 会话目标
+修复健康检查端点的问题，确保所有API测试能够正常通过。
+
+### 实现功能
+- 修复了根路径的健康检查端点，确保`/health`端点可以正常访问
+- 修复了数据库健康检查端点，解决了SQLAlchemy 2.0兼容性问题
+- 确保所有API测试都能正常通过
+
+### 关键技术决策
+- 在`main.py`中添加根路径的健康检查端点，确保`/health`端点可以正常访问
+- 使用SQLAlchemy的`text()`函数来执行SQL查询，解决SQLAlchemy 2.0的兼容性问题
+- 修改测试文件，使其适应当前的API路由和响应格式
+
+### 问题解决方案
+- 通过分析错误日志，确定了问题是由于缺少根路径的健康检查端点和SQLAlchemy 2.0兼容性问题
+- 在`main.py`中添加了根路径的健康检查端点，确保`/health`端点可以正常访问
+- 在`health.py`中修改了数据库健康检查函数，使用SQLAlchemy的`text()`函数来执行SQL查询
+- 修改了测试文件，使其适应当前的API路由和响应格式
+
+### 采用技术栈
+- 后端：FastAPI, SQLAlchemy, PostgreSQL
+- 测试工具：pytest, docker-compose
+
+### 涉及文件
+- backend/app/main.py
+- backend/app/api/endpoints/health.py
+- backend/tests/api/test_health.py 

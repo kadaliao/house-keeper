@@ -1,5 +1,3 @@
-version: '3.8'
-
 # 此文件扩展基础配置文件
 services:
   backend:

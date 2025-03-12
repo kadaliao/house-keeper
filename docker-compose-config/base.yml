@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # 后端服务基础配置
   backend-base:

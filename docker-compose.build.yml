@@ -4,28 +4,4 @@
 # 引用优化后的配置文件
 include:
   - docker-compose-config/base.yml
-  - docker-compose-config/build.yml
-
-services:
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      target: build-production
-      args:
-        - REACT_APP_API_URL=${API_URL:-http://localhost:8000/api/v1}
-    volumes:
-      - frontend_build:/app/build
-    environment:
-      - NODE_ENV=production
-    deploy:
-      resources:
-        limits:
-          memory: 6G
-          cpus: '2.0'
-        reservations:
-          memory: 2G
-          cpus: '1.0'
-
-volumes:
-  frontend_build: 
+  - docker-compose-config/build.yml 

@@ -18,11 +18,15 @@ services:
       - ../backend/.env
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/house_keeper
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=house_keeper
+      - DB_HOST=db
       - BACKEND_CORS_ORIGINS=["http://localhost:3000", "http://frontend:3000"]
       - PYTHONPATH=/app
     depends_on:
       - db
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: sh -c "/app/start.sh"
     networks:
       - app-network
 
@@ -56,6 +60,9 @@ services:
       - POSTGRES_DB=house_keeper
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../docker-init-scripts:/docker-entrypoint-initdb.d
 
   pgadmin:
     image: dpage/pgadmin4

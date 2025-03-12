@@ -4,6 +4,12 @@ FROM python:3.11-slim as base
 # 设置工作目录
 WORKDIR /app
 
+# 安装PostgreSQL客户端和调试工具
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 # 安装依赖
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

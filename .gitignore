@@ -180,3 +180,41 @@ pyrightconfig.json
 housekeeper.db
 test.db
 uploads/
+
+
+# 后端
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.pytest_cache/
+backend/**/.pytest_cache/
+
+# 前端
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.next/
+frontend/.env
+
+
+# 测试
+backend/tests/test_data/
+backend/tests/test_data/
+backend/tests/test_data/
+backend/tests/test_data/
+backend/tests/test_data/
+backend/tests/test_data/
+
+# 日志
+logs/
+
+# 配置
+config/
+
+
+# 临时文件
+tmp/
+
+# 缓存
+cache/
+

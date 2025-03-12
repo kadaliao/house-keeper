@@ -1,0 +1,32 @@
+# 通用
+.git
+.gitignore
+.env*
+.dockerignore
+Dockerfile*
+docker-compose*.yml
+README.md
+docs/
+.cursor/
+.github/
+
+# 后端
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.pytest_cache/
+backend/**/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+backend/tests/
+backend/alembic/versions/*.py
+
+# 前端
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+frontend/coverage/
+frontend/.env*
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log* 

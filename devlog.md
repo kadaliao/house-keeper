@@ -425,3 +425,46 @@
 - docker-compose.yml
 - docker-compose.build.yml
 - docker-compose.prod.yml 
+
+## 2025-03-12 Docker Compose 配置优化重构
+
+### 会话目标
+优化项目中的 Docker Compose 配置，减少重复代码，提高可维护性。
+
+### 实现功能
+- 创建了模块化的 Docker Compose 配置结构
+- 实现了基础配置与环境特定配置的分离
+- 使用 Docker Compose 的 extends 和 include 机制共享配置
+- 为不同环境（开发、测试、生产、构建）创建了专用配置
+- 添加了详细的配置文档
+
+### 关键技术决策
+- 采用基础配置文件 + 环境特定配置文件的模式
+- 将所有配置文件集中到 docker-compose-config 目录
+- 保留原有的入口文件名称，确保兼容性
+- 使用 Docker Compose v3.8 格式，支持更多高级特性
+
+### 问题解决方案
+- 通过 extends 机制解决服务配置重复问题
+- 通过 include 指令简化入口文件
+- 保持各环境配置的独立性，避免互相干扰
+- 通过详细文档确保配置易于理解和维护
+
+### 采用技术栈
+- Docker Compose v3.8+
+- Docker 容器化
+- 模块化配置管理
+
+### 涉及文件
+- 新增：docker-compose-config/ 目录及其中的所有文件
+  - base.yml
+  - dev.yml
+  - test.yml
+  - prod.yml
+  - build.yml
+  - README.md
+- 修改：
+  - docker-compose.yml
+  - docker-compose.test.yml
+  - docker-compose.prod.yml
+  - docker-compose.build.yml 

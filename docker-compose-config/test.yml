@@ -1,14 +1,10 @@
-# 测试环境配置文件
-# 使用命令：docker-compose -f docker-compose.test.yml up
-
-# 引用优化后的配置文件
-include:
-  - docker-compose-config/base.yml
-  - docker-compose-config/test.yml
+version: '3.8'
 
 services:
   test-db:
-    image: postgres:13-alpine
+    extends:
+      file: base.yml
+      service: db-base
     volumes:
       - test_postgres_data:/var/lib/postgresql/data
     environment:
@@ -21,16 +17,13 @@ services:
       - test-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U test_user -d test_house_keeper"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
   backend-test:
     build:
-      context: ./backend
+      context: ../backend
       target: development
     volumes:
-      - ./backend:/app
+      - ../backend:/app
       - /app/venv
       - /app/__pycache__
     environment:

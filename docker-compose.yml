@@ -1,3 +1,11 @@
+# 主开发环境配置文件
+# 使用命令：docker-compose up
+
+# 引用优化后的配置文件
+include:
+  - docker-compose-config/base.yml
+  - docker-compose-config/dev.yml
+
 services:
   backend:
     build: 

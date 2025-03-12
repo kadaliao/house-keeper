@@ -1,40 +1,31 @@
-# 生产环境配置文件
-# 使用命令：docker-compose -f docker-compose.prod.yml up -d
-
-# 引用优化后的配置文件
-include:
-  - docker-compose-config/base.yml
-  - docker-compose-config/prod.yml
+version: '3.8'
 
 services:
   backend:
+    extends:
+      file: base.yml
+      service: backend-base
     build:
-      context: ./backend
       target: production
     restart: always
     env_file:
-      - ./.env.prod
+      - ../.env.prod
     # 不暴露端口，只通过内部网络访问
     expose:
       - "8000"
     depends_on:
       - db
-    networks:
-      - app-network
     deploy:
       resources:
         limits:
           cpus: '0.50'
           memory: 512M
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
   frontend:
+    extends:
+      file: base.yml
+      service: frontend-base
     build:
-      context: ./frontend
       target: production
       args:
         - REACT_APP_API_URL=${API_URL}
@@ -44,11 +35,9 @@ services:
       - "443:443"
     volumes:
       # 挂载SSL证书（如果有）
-      - ./ssl:/etc/nginx/ssl
+      - ../ssl:/etc/nginx/ssl
     depends_on:
       - backend
-    networks:
-      - app-network
     deploy:
       resources:
         limits:
@@ -56,12 +45,14 @@ services:
           memory: 256M
 
   db:
-    image: postgres:13-alpine
+    extends:
+      file: base.yml
+      service: db-base
     restart: always
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # 数据库备份目录
-      - ./backups:/backups
+      - ../backups:/backups
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -69,22 +60,11 @@ services:
     # 不暴露端口，只通过内部网络访问
     expose:
       - "5432"
-    networks:
-      - app-network
     deploy:
       resources:
         limits:
           cpus: '1.0'
           memory: 1G
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-networks:
-  app-network:
-    driver: bridge
 
 volumes:
   postgres_data:

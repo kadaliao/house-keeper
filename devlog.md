@@ -293,7 +293,6 @@
 - frontend/src/pages/settings/SettingsPage.js
 - frontend/src/pages/profile/ProfilePage.js 
 
-
 ## 2025-03-12 建立专用测试数据库环境
 
 ### 会话目标
@@ -394,3 +393,35 @@
 - API测试：tests/api/test_auth.py, tests/api/test_items.py, tests/api/test_locations.py, tests/api/test_reminders.py
 - 项目依赖：requirements.txt 
 
+## 2025
+
+### 会话目标
+检查项目中的 docker-compose 文件是否存在冗余重复。
+
+### 实现功能
+- 分析了四个 docker-compose 文件的用途和配置
+- 确认了各个文件的特定职责和适用场景
+- 提供了可能的优化建议
+
+### 关键技术决策
+- 保留现有的 docker-compose 文件结构，因为每个文件都有明确的用途
+- 建议可以考虑引入基础配置文件共享通用配置
+
+### 问题解决方案
+- 确认 docker-compose.test.yml 专用于测试环境
+- 确认 docker-compose.yml 用于日常开发环境
+- 确认 docker-compose.build.yml 用于前端优化构建
+- 确认 docker-compose.prod.yml 用于生产环境部署
+
+### 采用技术栈
+- Docker, Docker Compose
+- PostgreSQL
+- FastAPI (后端)
+- React (前端)
+- Nginx (生产环境)
+
+### 涉及文件
+- docker-compose.test.yml
+- docker-compose.yml
+- docker-compose.build.yml
+- docker-compose.prod.yml 

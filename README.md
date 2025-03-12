@@ -29,9 +29,40 @@
 - Recharts：图表库
 - Formik & Yup：表单处理和验证
 
+### 容器化
+
+- Docker：容器化工具
+- Docker Compose：多容器应用管理
+- Nginx：前端服务器，处理静态资源和API代理
+
 ## 快速开始
 
-### 后端设置
+### 使用Docker（推荐）
+
+项目完全容器化，可以使用Docker Compose轻松启动整个应用：
+
+1. 克隆仓库
+   ```
+   git clone https://github.com/yourusername/house-keeper.git
+   cd house-keeper
+   ```
+
+2. 启动开发环境
+   ```
+   docker-compose up
+   ```
+
+3. 访问应用
+   - 前端: http://localhost:3000
+   - 后端API: http://localhost:8000/api/v1
+   - API文档: http://localhost:8000/docs
+   - 数据库管理界面: http://localhost:5050 (用户名: admin@admin.com, 密码: admin)
+
+### 本地开发（无Docker）
+
+如果您不想使用Docker，也可以在本地设置开发环境：
+
+#### 后端设置
 
 1. 创建并激活虚拟环境
    ```
@@ -67,7 +98,7 @@
    uvicorn app.main:app --reload
    ```
 
-### 前端设置
+#### 前端设置
 
 1. 安装依赖
    ```
@@ -93,6 +124,7 @@
     - `models/`：数据库模型
     - `schemas/`：Pydantic模型
   - `alembic/`：数据库迁移
+  - `tests/`：单元测试和功能测试
 
 - `frontend/`：前端代码
   - `src/`：源代码
@@ -101,6 +133,34 @@
     - `pages/`：页面组件
     - `services/`：API服务
     - `utils/`：工具函数
+
+## 容器化开发与测试
+
+项目采用Docker和Docker Compose进行容器化，支持开发、测试和生产环境：
+
+### 开发环境
+
+- `docker-compose.yml`：用于开发环境，提供热重载和开发便利性
+- 包含服务：backend、frontend、db、pgadmin
+- 支持代码修改热重载，便于快速开发
+
+### 测试环境
+
+- `docker-compose.test.yml`：专用于测试环境
+- 提供隔离的测试数据库环境，避免污染开发数据
+- 运行测试指令：`docker-compose -f docker-compose.test.yml up`
+
+### 生产环境
+
+- `docker-compose.prod.yml`：用于生产部署
+- 优化设置：资源限制、健康检查、安全配置
+- 部署指令：`docker-compose -f docker-compose.prod.yml up -d`
+
+### 构建优化
+
+- 多阶段构建（Multi-stage builds）提高Docker镜像效率
+- 使用`.npmrc`优化前端构建性能
+- 提供了专用的构建脚本，简化构建流程
 
 ## 开发路线图
 

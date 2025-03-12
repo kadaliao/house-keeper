@@ -2,7 +2,7 @@ services:
   # 后端服务基础配置
   backend-base:
     build:
-      context: ./backend
+      context: ../backend
     networks:
       - app-network
     healthcheck:
@@ -14,7 +14,7 @@ services:
   # 前端服务基础配置
   frontend-base:
     build:
-      context: ./frontend
+      context: ../frontend
     networks:
       - app-network
 

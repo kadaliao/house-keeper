@@ -5,6 +5,8 @@ services:
       file: base.yml
       service: backend-base
     build:
+      context: ../backend
+      dockerfile: Dockerfile
       target: development
     volumes:
       - ../backend:/app
@@ -21,13 +23,11 @@ services:
     depends_on:
       - db
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - app-network
 
   frontend:
-    extends:
-      file: base.yml
-      service: frontend-base
-    build:
-      dockerfile: Dockerfile
+    image: node:18-alpine
     volumes:
       - ../frontend:/app
       - /app/node_modules
@@ -40,8 +40,11 @@ services:
       - REACT_APP_API_URL=http://localhost:8000/api/v1
     depends_on:
       - backend
-    command: npm start
+    working_dir: /app
+    command: sh -c "npm install && npm start"
     restart: unless-stopped
+    networks:
+      - app-network
 
   db:
     extends:

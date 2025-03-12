@@ -3,5 +3,5 @@
 
 # 引用优化后的配置文件
 include:
-  - docker-compose-config/base.yml
-  - docker-compose-config/dev.yml 
+  - ./docker-compose-config/base.yml
+  - ./docker-compose-config/dev.yml 

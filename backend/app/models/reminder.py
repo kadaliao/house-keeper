@@ -15,7 +15,7 @@ class RepeatType(str, enum.Enum):
 
 
 class Reminder(Base):
-    __tablename__ = "reminders"
+    __tablename__ = "reminder"
     
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
@@ -25,8 +25,8 @@ class Reminder(Base):
     is_completed = Column(Boolean, default=False)
     
     # Foreign keys
-    owner_id = Column(Integer, ForeignKey("users.id"))
-    item_id = Column(Integer, ForeignKey("items.id"), nullable=True)
+    owner_id = Column(Integer, ForeignKey("user.id"))
+    item_id = Column(Integer, ForeignKey("item.id"), nullable=True)
     
     # Relationships
     owner = relationship("User", back_populates="reminders")

@@ -536,3 +536,34 @@
 - docker-compose.yml
 - docker-compose-config/base.yml
 - docker-compose-config/dev.yml 
+
+## 2025-03-12 数据库表名不匹配问题修复
+
+### 会话目标
+解决后端启动时出现的 `psycopg2.errors.UndefinedTable: relation "users" does not exist` 错误。
+
+### 实现功能
+- 修复了数据库表名与模型定义不匹配的问题
+- 确保所有模型正确引用数据库表
+- 使用户注册和登录功能正常工作
+
+### 关键技术决策
+- 将模型定义中的表名从复数形式（users, items, locations, reminders）改为单数形式（user, item, location, reminder）以匹配数据库中的实际表名
+- 更新所有外键引用，确保它们指向正确的表名
+- 保留现有数据库结构，避免重新创建迁移和重建数据库
+
+### 问题解决方案
+- 通过查看数据库中的实际表名，发现与模型定义不匹配
+- 修改所有模型类的 `__tablename__` 属性，使其与数据库中的表名一致
+- 更新所有外键引用，确保它们指向正确的表名
+- 重启后端服务，验证用户注册功能正常工作
+
+### 采用技术栈
+- 后端：FastAPI, SQLAlchemy, PostgreSQL, Alembic
+- 容器化：Docker, Docker Compose
+
+### 涉及文件
+- backend/app/models/user.py
+- backend/app/models/item.py
+- backend/app/models/location.py
+- backend/app/models/reminder.py 

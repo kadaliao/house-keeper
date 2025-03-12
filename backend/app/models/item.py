@@ -6,7 +6,7 @@ from app.db.base_class import Base
 
 
 class Item(Base):
-    __tablename__ = "items"
+    __tablename__ = "item"
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
@@ -19,8 +19,8 @@ class Item(Base):
     image_url = Column(String, nullable=True)
     
     # Foreign keys
-    owner_id = Column(Integer, ForeignKey("users.id"))
-    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
+    owner_id = Column(Integer, ForeignKey("user.id"))
+    location_id = Column(Integer, ForeignKey("location.id"), nullable=True)
     
     # Relationships
     owner = relationship("User", back_populates="items")

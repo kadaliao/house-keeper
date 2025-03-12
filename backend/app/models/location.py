@@ -6,18 +6,18 @@ from app.db.base_class import Base
 
 
 class Location(Base):
-    __tablename__ = "locations"
+    __tablename__ = "location"
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     description = Column(Text, nullable=True)
     
     # Self-referential relationship for hierarchical locations
-    parent_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
+    parent_id = Column(Integer, ForeignKey("location.id"), nullable=True)
     parent = relationship("Location", remote_side=[id], backref="children")
     
     # Foreign keys
-    owner_id = Column(Integer, ForeignKey("users.id"))
+    owner_id = Column(Integer, ForeignKey("user.id"))
     
     # Relationships
     owner = relationship("User", back_populates="locations")

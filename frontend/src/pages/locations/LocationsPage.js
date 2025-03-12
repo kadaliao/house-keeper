@@ -27,10 +27,9 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Collapse,
-  TreeView,
-  TreeItem
+  Collapse
 } from '@mui/material';
+import { TreeView, TreeItem } from '@mui/x-tree-view';
 import { 
   Add as AddIcon, 
   Edit as EditIcon, 
@@ -51,6 +50,7 @@ const LocationsPage = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [expanded, setExpanded] = useState([]);
+  const [selectedNode, setSelectedNode] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -232,6 +232,12 @@ const LocationsPage = () => {
     setExpanded(nodeIds);
   };
 
+  // 处理树形节点选择
+  const handleNodeSelect = (event, nodeId) => {
+    setSelectedNode(nodeId);
+    // 此处可以添加节点选择后的其他操作，比如显示详情等
+  };
+
   // 构建位置树形结构
   const buildLocationTree = (parentId = null) => {
     return locations
@@ -351,7 +357,9 @@ const LocationsPage = () => {
                 defaultCollapseIcon={<ExpandMoreIcon />}
                 defaultExpandIcon={<ChevronRightIcon />}
                 expanded={expanded}
+                selected={selectedNode}
                 onNodeToggle={handleToggle}
+                onNodeSelect={handleNodeSelect}
                 sx={{ 
                   flexGrow: 1, 
                   overflowY: 'auto',

@@ -72,6 +72,7 @@ export const updateLocation = async (id, locationData) => {
   }
   
   // 映射字段名称，确保与API一致
+  // 明确只选择需要的字段，确保不包含image_url
   const apiPayload = {
     name: locationData.name,
     parent_id: locationData.parent_id,
@@ -92,8 +93,8 @@ export const updateLocation = async (id, locationData) => {
   } catch (error) {
     console.error('更新位置失败:', error);
     console.error('错误响应详情:', error.response?.data);
-    console.error('请求参数:', JSON.stringify(locationData, null, 2));
-    console.error(`更新位置失败 (ID: ${id}):`, error, locationData);
+    console.error('请求参数:', JSON.stringify(apiPayload, null, 2));
+    console.error(`更新位置失败 (ID: ${id}):`, error);
     throw error;
   }
 };

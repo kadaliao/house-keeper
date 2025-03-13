@@ -76,6 +76,7 @@ const LocationsPage = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [selectedFileName, setSelectedFileName] = useState('');
   const fileInputRef = useRef(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
@@ -220,37 +221,38 @@ const LocationsPage = () => {
     setOpenDialog(false);
   };
 
-  // 保存位置
+  // 保存位置信息
   const handleSaveLocation = async () => {
-    if (!formData.name) {
-      setSnackbar({ open: true, message: '位置名称不能为空', severity: 'error' });
-      return;
-    }
-
     try {
-      setLoading(true);
+      setIsSaving(true);
+      setError(null);
+      
+      console.log('准备保存位置信息:', formData);
+      
       // 创建API需要的数据对象，不包含image_url
       const locationData = {
         name: formData.name,
         parent_id: formData.parent_id === 0 ? null : formData.parent_id,
         description: formData.description || ''
-        // 不要发送image_url字段，后端模型中没有该字段
+        // 注意：不要在这里添加image_url字段，后端模型中没有此字段
       };
       
       // 单独保存图片URL到本地变量，但不发送到API
       const imageUrl = formData.image_url || '';
       
-      console.log('保存位置前的数据:', locationData);
-      console.log('保存的图片URL (仅前端使用):', imageUrl);
-
+      console.log('发送到API的位置数据:', locationData);
+      console.log('本地保存的图片URL:', imageUrl);
+      
       let response;
+      
       if (editingLocation) {
-        response = await updateLocation(editingLocation.id, locationData);
-        setSnackbar({ open: true, message: '位置更新成功', severity: 'success' });
-        console.log('位置更新成功:', response);
+        console.log('更新现有位置:', editingLocation.id);
+        response = await updateLocation(editingLocation.id, locationData); // 不传递图片URL
+        
+        console.log('位置更新成功，后端返回:', response);
         
         // 后端返回的数据中没有image_url，需要在前端手动保存
-        if (response && imageUrl) {
+        if (response) {
           // 在locations数据中手动更新图片URL
           setLocations(prevLocations => 
             prevLocations.map(loc => 
@@ -259,32 +261,50 @@ const LocationsPage = () => {
                 : loc
             )
           );
+          
+          console.log('前端数据更新完成，包含图片URL');
         }
       } else {
-        response = await createLocation(locationData);
-        setSnackbar({ open: true, message: '位置创建成功', severity: 'success' });
-        console.log('位置创建成功:', response);
+        console.log('创建新位置');
+        response = await createLocation(locationData); // 不传递图片URL
         
-        // 新创建的位置，手动添加图片URL
-        if (response && imageUrl) {
-          // 确保刷新后的数据包含新添加的imageUrl
-          setLocations(prevLocations => [
-            ...prevLocations, 
-            {...response, image_url: imageUrl}
-          ]);
-        } else {
-          // 如果没有图片，仍然需要刷新位置列表
-          fetchLocations();
+        console.log('位置创建成功，后端返回:', response);
+        
+        // 后端返回的数据中没有image_url，需要在前端手动添加
+        if (response) {
+          // 添加图片URL到新创建的位置
+          const newLocation = {...response, image_url: imageUrl};
+          
+          // 更新位置列表
+          setLocations(prevLocations => [...prevLocations, newLocation]);
+          
+          console.log('新位置已添加到列表，包含图片URL:', newLocation);
         }
       }
       
+      // 关闭对话框并重置表单
       handleCloseDialog();
+      
+      // 显示成功消息
+      setSnackbar({
+        open: true,
+        message: editingLocation ? '位置更新成功' : '位置创建成功',
+        severity: 'success'
+      });
+      
+      console.log('位置保存流程完成');
+      
     } catch (error) {
       console.error('保存位置失败:', error);
-      const errorMessage = error.response?.data?.message || error.message || '操作失败';
-      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
+      setError(error.message || '保存位置失败，请重试');
+      
+      setSnackbar({
+        open: true,
+        message: `保存位置失败: ${error.message || '未知错误'}`,
+        severity: 'error'
+      });
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -644,12 +664,27 @@ const LocationsPage = () => {
                 <CardMedia
                   component="img"
                   height="140"
-                  image={displayImageUrl || 'https://via.placeholder.com/140x140?text=无图片'}
+                  image={displayImageUrl || ''}
                   alt={location.name}
                   onError={(e) => {
                     console.error('图片加载失败:', displayImageUrl);
-                    console.log('使用占位图片替代');
-                    e.target.src = 'https://via.placeholder.com/140x140?text=图片加载失败';
+                    // 使用背景色替代图片
+                    e.target.style.backgroundColor = '#f0f0f0';
+                    e.target.style.display = 'flex';
+                    e.target.style.alignItems = 'center';
+                    e.target.style.justifyContent = 'center';
+                    
+                    // 创建文本节点显示位置名称首字母
+                    const text = document.createTextNode(location.name.charAt(0).toUpperCase());
+                    e.target.innerHTML = '';
+                    
+                    // 创建span元素包含文本
+                    const span = document.createElement('span');
+                    span.style.fontSize = '3rem';
+                    span.style.color = '#999';
+                    span.appendChild(text);
+                    
+                    e.target.appendChild(span);
                     e.target.onerror = null; // 防止无限循环
                   }}
                   sx={{ objectFit: 'contain', bgcolor: '#f5f5f5' }}
@@ -839,8 +874,22 @@ const LocationsPage = () => {
                       }} 
                       onError={(e) => {
                         console.error('预览图片加载失败:', imagePreview || formData.image_url);
-                        console.log('替换为占位图片');
-                        e.target.src = 'https://via.placeholder.com/400x200?text=图片预览失败';
+                        // 使用背景色替代图片
+                        e.target.style.backgroundColor = '#f0f0f0';
+                        e.target.style.display = 'flex';
+                        e.target.style.alignItems = 'center';
+                        e.target.style.justifyContent = 'center';
+                        e.target.style.height = '200px';
+                        
+                        const text = document.createTextNode('图片无法加载');
+                        e.target.innerHTML = '';
+                        
+                        const span = document.createElement('span');
+                        span.style.fontSize = '1rem';
+                        span.style.color = '#999';
+                        span.appendChild(text);
+                        
+                        e.target.appendChild(span);
                         e.target.onerror = null; // 防止无限循环
                       }}
                     />
@@ -897,7 +946,7 @@ const LocationsPage = () => {
             onClick={handleSaveLocation} 
             variant="contained" 
             color="primary"
-            disabled={!formData.name || uploadingImage}
+            disabled={!formData.name || uploadingImage || isSaving}
           >
             {editingLocation ? '保存修改' : '添加位置'}
           </Button>

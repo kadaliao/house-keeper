@@ -705,3 +705,31 @@
 ### 涉及文件
 - `.github/workflows/test.yml`
 - `.github/workflows/deploy.yml`
+
+## 2025-03-13 前端构建问题修复
+
+### 会话目标
+修复前端Docker构建过程中的"react-scripts: not found"错误
+
+### 实现功能
+- 优化了前端Dockerfile，解决了构建失败问题
+- 为生产构建环境设置了合适的环境变量
+- 改进了生产构建的多阶段构建过程
+
+### 关键技术决策
+- 为生产构建使用独立的基础镜像
+- 明确设置PATH环境变量，确保node_modules/.bin目录中的可执行文件能被找到
+- 设置适当的NODE_ENV和NODE_OPTIONS环境变量
+
+### 问题解决方案
+- 通过修改Dockerfile解决了"react-scripts: not found"错误
+- 通过独立的构建阶段提高了构建过程的可靠性
+- 通过环境变量设置优化了构建性能和兼容性
+
+### 采用技术栈
+- Docker多阶段构建
+- Node.js & React
+- Nginx (用于生产环境)
+
+### 涉及文件
+- `frontend/Dockerfile`

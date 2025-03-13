@@ -189,8 +189,17 @@ const LocationsPage = () => {
         parent_id: location.parent_id || '',
         image_url: imageUrl
       });
-      // 在编辑模式下，初始时不显示文件名，因为这是已保存的URL
-      setImagePreview(null);
+      
+      // 在编辑模式下，设置图片预览（如果有图片URL）
+      if (imageUrl) {
+        setImagePreview(getImageUrl(imageUrl));
+        console.log('设置图片预览URL:', getImageUrl(imageUrl));
+      } else {
+        setImagePreview(null);
+      }
+      
+      // 清除文件名，因为我们是在编辑已有图片
+      setSelectedFileName('');
     } else {
       setFormData({
         name: '',
@@ -199,6 +208,7 @@ const LocationsPage = () => {
         image_url: ''
       });
       setImagePreview(null);
+      setSelectedFileName('');
     }
     setOpenDialog(true);
   };
@@ -514,24 +524,36 @@ const LocationsPage = () => {
 
   // 修复图片URL处理函数，避免重复添加API_URL
   const getImageUrl = (url) => {
-    if (!url) {
+    try {
+      if (!url || url.trim() === '') {
+        console.log('图片URL为空，返回空字符串');
+        return '';
+      }
+      
+      const API_URL = process.env.REACT_APP_API_URL || '/api/v1';
+      console.log('getImageUrl处理图片URL:', url, 'API_URL:', API_URL);
+      
+      // 检查URL是否已经包含API_URL前缀或是完整的HTTP(S)URL
+      if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith(API_URL)) {
+        console.log('图片URL已经是完整路径，不需要添加前缀:', url);
+        return url;
+      }
+      
+      // 检查URL是否是数据URL (base64)
+      if (url.startsWith('data:')) {
+        console.log('图片URL是data:URL格式，不需要处理:', url.substring(0, 30) + '...');
+        return url;
+      }
+      
+      // 确保URL以斜杠开头
+      const formattedUrl = url.startsWith('/') ? url : `/${url}`;
+      const fullUrl = `${API_URL}${formattedUrl}`;
+      console.log('图片URL添加API_URL前缀后:', fullUrl);
+      return fullUrl;
+    } catch (error) {
+      console.error('处理图片URL时出错:', error, 'URL:', url);
       return '';
     }
-    
-    const API_URL = process.env.REACT_APP_API_URL || '/api/v1';
-    console.log('getImageUrl 函数处理图片URL:', url, 'API_URL:', API_URL);
-    
-    // 检查URL是否已经包含API_URL前缀
-    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith(API_URL)) {
-      console.log('图片URL已经是完整路径，不需要添加前缀:', url);
-      return url;
-    }
-    
-    // 确保URL以斜杠开头
-    const formattedUrl = url.startsWith('/') ? url : `/${url}`;
-    const fullUrl = `${API_URL}${formattedUrl}`;
-    console.log('图片URL添加API_URL前缀后:', fullUrl);
-    return fullUrl;
   };
 
   // 渲染位置卡片视图
@@ -557,11 +579,11 @@ const LocationsPage = () => {
                 <CardMedia
                   component="img"
                   height="140"
-                  image={displayImageUrl || '/static/images/placeholder.png'}
+                  image={displayImageUrl || 'https://via.placeholder.com/140x140?text=无图片'}
                   alt={location.name}
                   onError={(e) => {
                     console.error('图片加载失败:', displayImageUrl);
-                    e.target.src = '/static/images/placeholder.png';
+                    e.target.src = 'https://via.placeholder.com/140x140?text=图片加载失败';
                     e.target.onerror = null;
                   }}
                 />
@@ -750,7 +772,8 @@ const LocationsPage = () => {
                       }} 
                       onError={(e) => {
                         console.error('预览图片加载失败:', imagePreview || formData.image_url);
-                        e.target.src = '/static/images/placeholder.png';
+                        e.target.src = 'https://via.placeholder.com/400x200?text=图片预览失败';
+                        e.target.onerror = null;
                       }}
                     />
                     <IconButton

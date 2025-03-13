@@ -13,20 +13,13 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v3
       
-      - name: 安装Docker Compose插件
-        run: |
-          # 确保Docker Engine已安装
-          docker --version
-          
-          # 确保Docker Compose插件已安装（Ubuntu runner已预装）
-          if ! docker compose version &>/dev/null; then
-            echo "安装Docker Compose插件..."
-            sudo apt-get update
-            sudo apt-get install -y docker-compose-plugin
-          fi
-          
-          # 验证Docker Compose安装
-          docker compose version
+      - name: 设置Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true  # 自动安装最新版Docker CLI和Buildx插件
+      
+      - name: 验证Docker Compose版本
+        run: docker compose version
       
       - name: 设置测试环境变量
         run: |

@@ -245,8 +245,26 @@ const LocationsPage = () => {
       
       // 在编辑模式下，设置图片预览（如果有图片URL）
       if (imageUrl) {
-        setImagePreview(getImageUrl(imageUrl));
-        console.log('设置图片预览URL:', getImageUrl(imageUrl));
+        try {
+          // 先检查图片URL是否有效
+          const img = new Image();
+          img.onerror = () => {
+            console.warn('编辑对话框图片URL无效，清空预览:', imageUrl);
+            setImagePreview(null);
+          };
+          img.onload = () => {
+            console.log('编辑对话框图片加载成功:', imageUrl);
+            setImagePreview(getImageUrl(imageUrl));
+          };
+          img.src = getImageUrl(imageUrl);
+          
+          // 设置预览（如果图片加载失败，将通过onerror回调清空预览）
+          setImagePreview(getImageUrl(imageUrl));
+          console.log('设置图片预览URL:', getImageUrl(imageUrl));
+        } catch (error) {
+          console.error('预览图片设置失败:', error);
+          setImagePreview(null);
+        }
       } else {
         setImagePreview(null);
       }
@@ -773,9 +791,34 @@ const LocationsPage = () => {
                   alt={location.name}
                   onError={(e) => {
                     console.error('图片加载失败:', displayImageUrl);
-                    // 使用静态占位图
-                    e.target.src = 'https://via.placeholder.com/400x140?text=' + encodeURIComponent(location.name);
-                    e.target.onerror = null; // 防止无限循环
+                    // 不再使用外部占位符服务，改用本地样式
+                    e.target.style.display = 'flex';
+                    e.target.style.alignItems = 'center';
+                    e.target.style.justifyContent = 'center';
+                    e.target.style.backgroundColor = '#f5f5f5';
+                    e.target.style.color = '#666';
+                    e.target.style.fontSize = '2rem';
+                    e.target.style.fontWeight = 'bold';
+                    
+                    // 创建显示首字母的元素
+                    const initialDiv = document.createElement('div');
+                    initialDiv.innerText = location.name.charAt(0).toUpperCase();
+                    initialDiv.style.width = '100%';
+                    initialDiv.style.height = '100%';
+                    initialDiv.style.display = 'flex';
+                    initialDiv.style.alignItems = 'center';
+                    initialDiv.style.justifyContent = 'center';
+                    initialDiv.style.backgroundColor = '#e0e0e0';
+                    initialDiv.style.color = '#666';
+                    initialDiv.style.fontSize = '3rem';
+                    initialDiv.style.fontWeight = 'bold';
+                    
+                    // 清空并添加新元素
+                    e.target.innerHTML = '';
+                    e.target.appendChild(initialDiv);
+                    
+                    // 防止无限循环
+                    e.target.onerror = null;
                   }}
                   sx={{ objectFit: 'cover', bgcolor: '#f5f5f5' }}
                 />
@@ -964,8 +1007,28 @@ const LocationsPage = () => {
                       }} 
                       onError={(e) => {
                         console.error('预览图片加载失败:', imagePreview || formData.image_url);
-                        // 使用占位图
-                        e.target.src = 'https://via.placeholder.com/400x200?text=' + encodeURIComponent('图片加载失败');
+                        // 改用本地占位内容
+                        const container = e.target.parentNode;
+                        
+                        // 创建显示首字母的元素
+                        const initialDiv = document.createElement('div');
+                        initialDiv.innerText = formData.name ? formData.name.charAt(0).toUpperCase() : '?';
+                        initialDiv.style.width = '100%';
+                        initialDiv.style.height = '200px';
+                        initialDiv.style.display = 'flex';
+                        initialDiv.style.alignItems = 'center';
+                        initialDiv.style.justifyContent = 'center';
+                        initialDiv.style.backgroundColor = '#e0e0e0';
+                        initialDiv.style.color = '#666';
+                        initialDiv.style.fontSize = '3rem';
+                        initialDiv.style.fontWeight = 'bold';
+                        initialDiv.style.border = '1px solid #eee';
+                        initialDiv.style.borderRadius = '4px';
+                        
+                        // 替换图片元素
+                        e.target.style.display = 'none';
+                        container.appendChild(initialDiv);
+                        
                         e.target.onerror = null; // 防止无限循环
                       }}
                     />

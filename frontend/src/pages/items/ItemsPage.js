@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Typography, 
   Paper, 
@@ -24,7 +24,8 @@ import {
   CircularProgress,
   Alert,
   Snackbar,
-  InputAdornment
+  InputAdornment,
+  CardMedia
 } from '@mui/material';
 import { 
   Add as AddIcon, 
@@ -32,13 +33,15 @@ import {
   Delete as DeleteIcon, 
   Search as SearchIcon,
   Category as CategoryIcon,
-  LocationOn as LocationIcon
+  LocationOn as LocationIcon,
+  Upload as UploadIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { format } from 'date-fns';
 
 import { getItems, createItem, updateItem, deleteItem, searchItems } from '../../services/items';
 import { getLocations } from '../../services/locations';
+import { uploadImage } from '../../services/uploads';
 
 const ItemsPage = () => {
   const [items, setItems] = useState([]);
@@ -66,6 +69,10 @@ const ItemsPage = () => {
     location_id: '',
     image_url: ''
   });
+
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
+  const fileInputRef = useRef(null);
 
   // 获取所有物品和位置
   useEffect(() => {
@@ -172,6 +179,7 @@ const ItemsPage = () => {
       location_id: item.location_id || '',
       image_url: item.image_url || ''
     });
+    setImagePreview(item.image_url);
     setOpenDialog(true);
   };
 
@@ -297,6 +305,91 @@ const ItemsPage = () => {
     return location ? location.name : '未指定';
   };
 
+  // 处理图片上传
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // 验证文件类型
+    if (!file.type.startsWith('image/')) {
+      setSnackbar({
+        open: true,
+        message: '请选择图片文件',
+        severity: 'error'
+      });
+      return;
+    }
+
+    // 创建预览
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+
+    try {
+      setUploadingImage(true);
+      
+      // 上传图片
+      const response = await uploadImage(file);
+      
+      // 更新表单数据
+      setFormData({
+        ...formData,
+        image_url: response.url
+      });
+      
+      setSnackbar({
+        open: true,
+        message: '图片上传成功',
+        severity: 'success'
+      });
+    } catch (err) {
+      console.error('图片上传失败:', err);
+      setSnackbar({
+        open: true,
+        message: '图片上传失败，请稍后重试',
+        severity: 'error'
+      });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // 处理移除图片
+  const handleRemoveImage = () => {
+    setFormData({
+      ...formData,
+      image_url: ''
+    });
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // 处理图片URL
+  const getImageUrl = (url) => {
+    if (!url) return null;
+    
+    // 如果已经是完整URL（包含http或https），则直接返回
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // 如果是相对路径，则使用后端的基础URL
+    // 从环境变量或默认值获取API URL的基础部分
+    const apiUrl = process.env.REACT_APP_API_URL || '/api/v1';
+    const baseUrl = apiUrl.replace('/api/v1', '');
+    
+    // 确保路径格式正确
+    if (url.startsWith('/')) {
+      return `${baseUrl}${url}`;
+    } else {
+      return `${baseUrl}/${url}`;
+    }
+  };
+
   return (
     <Paper elevation={3} sx={{ p: 3 }}>
       <Box sx={{ mb: 4 }}>
@@ -391,10 +484,23 @@ const ItemsPage = () => {
                     transition: 'transform 0.2s, box-shadow 0.2s',
                     '&:hover': {
                       transform: 'translateY(-4px)',
-                      boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
                     }
                   }}
                 >
+                  {item.image_url && (
+                    <CardMedia
+                      component="img"
+                      height="160"
+                      image={getImageUrl(item.image_url)}
+                      alt={item.name}
+                      onError={(e) => {
+                        console.error('图片加载失败:', item.image_url);
+                        e.target.src = 'https://via.placeholder.com/400x160?text=图片加载失败';
+                      }}
+                      sx={{ objectFit: 'cover' }}
+                    />
+                  )}
                   <CardContent sx={{ flexGrow: 1 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                       <Typography variant="h6" component="h2" gutterBottom>
@@ -572,15 +678,75 @@ const ItemsPage = () => {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="图片URL"
-                name="image_url"
-                value={formData.image_url}
-                onChange={handleInputChange}
-                margin="normal"
-              />
+            <Grid item xs={12}>
+              <Box sx={{ mb: 2, mt: 2 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  物品图片
+                </Typography>
+                
+                {/* 图片预览 */}
+                {(imagePreview || formData.image_url) && (
+                  <Box sx={{ mb: 2, position: 'relative' }}>
+                    <img 
+                      src={imagePreview || getImageUrl(formData.image_url)} 
+                      alt="物品预览" 
+                      style={{ 
+                        maxWidth: '100%', 
+                        maxHeight: '200px', 
+                        borderRadius: '8px',
+                        border: '1px solid #eee'
+                      }}
+                      onError={(e) => {
+                        console.error('图片预览加载失败:', imagePreview || formData.image_url);
+                        e.target.src = 'https://via.placeholder.com/200?text=图片加载失败';
+                      }}
+                    />
+                    <IconButton 
+                      size="small" 
+                      color="error"
+                      onClick={handleRemoveImage}
+                      sx={{ position: 'absolute', top: 5, right: 5, bgcolor: 'rgba(255,255,255,0.7)' }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
+                )}
+                
+                {/* 上传按钮 */}
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <input
+                    ref={fileInputRef}
+                    accept="image/*"
+                    type="file"
+                    onChange={handleImageUpload}
+                    style={{ display: 'none' }}
+                    id="raised-button-file"
+                  />
+                  <label htmlFor="raised-button-file">
+                    <Button
+                      variant="outlined"
+                      component="span"
+                      startIcon={<UploadIcon />}
+                      disabled={uploadingImage}
+                      sx={{ mr: 1 }}
+                    >
+                      {uploadingImage ? '上传中...' : '选择图片'}
+                    </Button>
+                  </label>
+                  {uploadingImage && <CircularProgress size={24} sx={{ ml: 1 }} />}
+                </Box>
+                
+                {/* 图片URL手动输入 */}
+                <TextField
+                  fullWidth
+                  label="图片URL（可选）"
+                  name="image_url"
+                  value={formData.image_url}
+                  onChange={handleInputChange}
+                  margin="normal"
+                  helperText="您也可以直接输入图片链接"
+                />
+              </Box>
             </Grid>
             <Grid item xs={12} sm={6}>
               <DatePicker

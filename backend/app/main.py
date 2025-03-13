@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
 from starlette.responses import RedirectResponse
 
 from app.api.api import api_router
@@ -39,6 +41,11 @@ else:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+# 添加uploads目录的静态文件服务
+os.makedirs("uploads/images", exist_ok=True)
+# 将静态文件服务挂载到API路径之前，确保在容器环境中正确访问
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 

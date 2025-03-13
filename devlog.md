@@ -678,3 +678,30 @@
 - backend/Dockerfile (修改)
 - backend/alembic/env.py (修改)
 - backend/.env (修改)
+
+## 2025-03-12 GitHub Actions工作流修复
+
+### 会话目标
+修复 GitHub Actions 工作流中 Docker Compose 命令未找到的错误
+
+### 实现功能
+- 在 CI/CD 工作流中添加了安装 Docker Compose 的步骤
+- 更新了命令语法以符合 Docker Compose V2 的标准
+
+### 关键技术决策
+- 使用 `docker-compose-plugin` 安装 Docker Compose V2
+- 采用无连字符命令格式 (`docker compose`)
+- 添加版本验证以确保安装成功
+
+### 问题解决方案
+- 通过在执行 Docker Compose 命令前添加必要的安装步骤解决了 "command not found" 错误
+- 通过更新命令语法确保与 Docker Compose V2 兼容
+
+### 采用技术栈
+- GitHub Actions
+- Docker Compose V2
+- Ubuntu 运行环境
+
+### 涉及文件
+- `.github/workflows/test.yml`
+- `.github/workflows/deploy.yml`

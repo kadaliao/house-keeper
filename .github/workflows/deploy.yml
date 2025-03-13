@@ -22,6 +22,12 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v3
       
+      - name: 安装Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose-plugin
+          docker compose version
+      
       - name: 设置Docker Buildx
         uses: docker/setup-buildx-action@v2
       
@@ -71,5 +77,5 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd /path/to/deployment
-            docker-compose -f docker-compose.prod.yml pull
-            docker-compose -f docker-compose.prod.yml up -d 
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d 

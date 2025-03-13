@@ -229,29 +229,55 @@ const LocationsPage = () => {
 
     try {
       setLoading(true);
+      // 创建API需要的数据对象，不包含image_url
       const locationData = {
         name: formData.name,
         parent_id: formData.parent_id === 0 ? null : formData.parent_id,
-        description: formData.description || '',
-        image_url: formData.image_url || ''
+        description: formData.description || ''
+        // 不要发送image_url字段，后端模型中没有该字段
       };
       
+      // 单独保存图片URL到本地变量，但不发送到API
+      const imageUrl = formData.image_url || '';
+      
       console.log('保存位置前的数据:', locationData);
-      console.log('保存的图片URL:', locationData.image_url);
+      console.log('保存的图片URL (仅前端使用):', imageUrl);
 
       let response;
       if (editingLocation) {
         response = await updateLocation(editingLocation.id, locationData);
         setSnackbar({ open: true, message: '位置更新成功', severity: 'success' });
         console.log('位置更新成功:', response);
+        
+        // 后端返回的数据中没有image_url，需要在前端手动保存
+        if (response && imageUrl) {
+          // 在locations数据中手动更新图片URL
+          setLocations(prevLocations => 
+            prevLocations.map(loc => 
+              loc.id === editingLocation.id 
+                ? {...response, image_url: imageUrl} 
+                : loc
+            )
+          );
+        }
       } else {
         response = await createLocation(locationData);
         setSnackbar({ open: true, message: '位置创建成功', severity: 'success' });
         console.log('位置创建成功:', response);
+        
+        // 新创建的位置，手动添加图片URL
+        if (response && imageUrl) {
+          // 确保刷新后的数据包含新添加的imageUrl
+          setLocations(prevLocations => [
+            ...prevLocations, 
+            {...response, image_url: imageUrl}
+          ]);
+        } else {
+          // 如果没有图片，仍然需要刷新位置列表
+          fetchLocations();
+        }
       }
       
-      // 确保刷新位置列表
-      fetchLocations();
       handleCloseDialog();
     } catch (error) {
       console.error('保存位置失败:', error);

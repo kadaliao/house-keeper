@@ -44,8 +44,8 @@ export const createLocation = async (locationData) => {
   const apiPayload = {
     name: locationData.name,
     parent_id: locationData.parent_id,
-    description: locationData.description,
-    image_url: locationData.image_url
+    description: locationData.description
+    // 不发送image_url字段，后端模型中没有该字段
   };
   
   try {
@@ -60,6 +60,9 @@ export const createLocation = async (locationData) => {
 };
 
 export const updateLocation = async (id, locationData) => {
+  console.log('开始更新位置，ID:', id);
+  console.log('准备发送的位置数据详情:', JSON.stringify(locationData, null, 2));
+  
   if (!id) {
     throw new Error('位置ID不能为空');
   }
@@ -72,16 +75,24 @@ export const updateLocation = async (id, locationData) => {
   const apiPayload = {
     name: locationData.name,
     parent_id: locationData.parent_id,
-    description: locationData.description,
-    image_url: locationData.image_url
+    description: locationData.description
+    // 不发送image_url字段，后端模型中没有该字段
   };
   
   try {
     console.log(`正在更新位置(ID: ${id}):`, apiPayload);
     const response = await api.put(`/locations/${id}`, apiPayload);
+    
+    if (!response.data) {
+      throw new Error('更新位置时服务器未返回数据');
+    }
+    
     console.log(`位置更新返回数据(ID: ${id}):`, response.data);
     return response.data;
   } catch (error) {
+    console.error('更新位置失败:', error);
+    console.error('错误响应详情:', error.response?.data);
+    console.error('请求参数:', JSON.stringify(locationData, null, 2));
     console.error(`更新位置失败 (ID: ${id}):`, error, locationData);
     throw error;
   }

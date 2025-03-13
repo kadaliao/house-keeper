@@ -51,6 +51,7 @@ import {
 import { getItems } from '../../services/items';
 import { getLocations } from '../../services/locations';
 import { getDueReminders, getUpcomingReminders } from '../../services/reminders';
+import { getDashboardStats } from '../../services/stats';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
@@ -297,6 +298,7 @@ const DashboardPage = () => {
   const [locations, setLocations] = useState([]);
   const [dueReminders, setDueReminders] = useState([]);
   const [upcomingReminders, setUpcomingReminders] = useState([]);
+  const [dashboardStats, setDashboardStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const theme = useTheme();
@@ -306,16 +308,15 @@ const DashboardPage = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [itemsData, locationsData, dueRemindersData, upcomingRemindersData] = await Promise.all([
-          getItems(),
-          getLocations(),
+        const [dueRemindersData, upcomingRemindersData, statsData] = await Promise.all([
           getDueReminders(),
           getUpcomingReminders(),
+          getDashboardStats()
         ]);
-        setItems(itemsData);
-        setLocations(locationsData);
+        
         setDueReminders(dueRemindersData);
         setUpcomingReminders(upcomingRemindersData);
+        setDashboardStats(statsData);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
         setError('加载数据失败，请稍后再试');
@@ -326,48 +327,6 @@ const DashboardPage = () => {
 
     fetchData();
   }, []);
-
-  // 准备图表数据
-  const prepareCategoryData = () => {
-    const categories = {};
-    items.forEach((item) => {
-      const category = item.category || '未分类';
-      categories[category] = (categories[category] || 0) + 1;
-    });
-
-    return Object.keys(categories).map((key) => ({
-      name: key,
-      value: categories[key],
-    }));
-  };
-
-  const prepareLocationData = () => {
-    const locationCounts = {};
-    items.forEach((item) => {
-      if (item.location_id) {
-        locationCounts[item.location_id] = (locationCounts[item.location_id] || 0) + 1;
-      }
-    });
-
-    return locations
-      .filter((location) => locationCounts[location.id])
-      .map((location) => ({
-        name: location.name,
-        count: locationCounts[location.id] || 0,
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-  };
-
-  // 准备趋势数据（模拟数据）
-  const prepareTrendData = () => {
-    const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-    return days.map((day, index) => ({
-      name: day,
-      物品: 10 + Math.floor(Math.random() * 30),
-      提醒: 5 + Math.floor(Math.random() * 15),
-    }));
-  };
 
   // 自定义图表工具提示
   const CustomTooltip = ({ active, payload, label }) => {
@@ -454,8 +413,33 @@ const DashboardPage = () => {
     );
   }
 
-  const categoryData = prepareCategoryData();
-  const locationData = prepareLocationData();
+  // 定义默认空数据
+  const defaultStats = {
+    counts: {
+      items: 0,
+      locations: 0,
+      due_reminders: 0,
+      upcoming_reminders: 0
+    },
+    category_distribution: [],
+    location_stats: []
+  };
+
+  // 使用统计数据或默认值
+  const stats = dashboardStats || defaultStats;
+  const categoryData = stats.category_distribution || [];
+  const locationData = stats.location_stats || [];
+
+  // 准备趋势数据（模拟数据）
+  const prepareTrendData = () => {
+    const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+    return days.map((day, index) => ({
+      name: day,
+      物品: 10 + Math.floor(Math.random() * 30),
+      提醒: 5 + Math.floor(Math.random() * 15),
+    }));
+  };
+
   const trendData = prepareTrendData();
 
   return (
@@ -483,7 +467,7 @@ const DashboardPage = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard 
             title="物品总数" 
-            value={items.length} 
+            value={stats.counts.items} 
             icon={InventoryIcon}
             color={theme.palette.primary.main}
             trend="up"
@@ -493,7 +477,7 @@ const DashboardPage = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard 
             title="位置总数" 
-            value={locations.length} 
+            value={stats.counts.locations} 
             icon={LocationIcon}
             color={theme.palette.secondary.main}
             trend="up"
@@ -503,7 +487,7 @@ const DashboardPage = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard 
             title="已过期提醒" 
-            value={dueReminders.length} 
+            value={stats.counts.due_reminders} 
             icon={NotificationsIcon}
             color={theme.palette.error.main}
             trend="down"
@@ -514,7 +498,7 @@ const DashboardPage = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard 
             title="即将到期提醒" 
-            value={upcomingReminders.length} 
+            value={stats.counts.upcoming_reminders} 
             icon={AccessTimeIcon}
             color={theme.palette.warning.main}
             trend="up"
@@ -602,46 +586,79 @@ const DashboardPage = () => {
             icon={LocationIcon}
             color={theme.palette.info.main}
           >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={locationData}
-                layout="vertical"
-                margin={{
-                  top: 20,
-                  right: 20,
-                  left: 40,
-                  bottom: 0,
+            {locationData && locationData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={locationData}
+                  layout="vertical"
+                  margin={{
+                    top: 20,
+                    right: 20,
+                    left: 40,
+                    bottom: 0,
+                  }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={alpha(theme.palette.divider, 0.3)} />
+                  <XAxis type="number" stroke={theme.palette.text.secondary} />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    scale="band" 
+                    stroke={theme.palette.text.secondary}
+                    tickLine={false}
+                    style={{
+                      fontSize: '0.75rem',
+                    }}
+                  />
+                  <RechartsTooltip content={<CustomTooltip />} />
+                  <Bar 
+                    dataKey="count" 
+                    name="物品数量" 
+                    fill={alpha(theme.palette.info.main, 0.8)}
+                    radius={[0, 4, 4, 0]}
+                    barSize={20}
+                    onClick={(data) => {
+                      // 如果数据包含id，导航到位置详情页面
+                      if (data && data.id) {
+                        window.location.href = `/locations?selected=${data.id}`;
+                      }
+                    }}
+                  >
+                    {locationData.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={alpha(theme.palette.info.main, 0.7 - (index * 0.1))}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <Box 
+                sx={{ 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  p: 3
                 }}
               >
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={alpha(theme.palette.divider, 0.3)} />
-                <XAxis type="number" stroke={theme.palette.text.secondary} />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  scale="band" 
-                  stroke={theme.palette.text.secondary}
-                  tickLine={false}
-                  style={{
-                    fontSize: '0.75rem',
-                  }}
-                />
-                <RechartsTooltip content={<CustomTooltip />} />
-                <Bar 
-                  dataKey="count" 
-                  name="物品数量" 
-                  fill={alpha(theme.palette.info.main, 0.8)}
-                  radius={[0, 4, 4, 0]}
-                  barSize={20}
+                <Typography variant="body1" color="textSecondary" sx={{ mb: 2, textAlign: 'center' }}>
+                  暂无位置数据或未添加物品到位置中
+                </Typography>
+                <Button 
+                  variant="outlined" 
+                  size="small" 
+                  color="info"
+                  startIcon={<LocationIcon />}
+                  onClick={() => window.location.href = '/locations'}
                 >
-                  {locationData.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={alpha(theme.palette.info.main, 0.7 - index * 0.1)}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                  前往管理位置
+                </Button>
+              </Box>
+            )}
           </ChartCard>
         </Grid>
         

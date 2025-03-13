@@ -41,6 +41,7 @@ import {
   Folder as FolderIcon,
   FolderOpen as FolderOpenIcon
 } from '@mui/icons-material';
+import { useLocation } from 'react-router-dom';
 
 import { getLocations, createLocation, updateLocation, deleteLocation } from '../../services/locations';
 
@@ -63,6 +64,10 @@ const LocationsPage = () => {
     description: '',
     parent_id: ''
   });
+
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const selectedLocationId = queryParams.get('selected');
 
   // 获取所有位置
   useEffect(() => {
@@ -93,6 +98,37 @@ const LocationsPage = () => {
 
     fetchLocations();
   }, []);
+
+  useEffect(() => {
+    // 如果通过URL传入了selected参数，自动选择对应位置
+    if (selectedLocationId && locations.length > 0) {
+      const locationToSelect = locations.find(
+        loc => loc.id === parseInt(selectedLocationId, 10)
+      );
+      
+      if (locationToSelect) {
+        setSelectedNode([`${locationToSelect.id}`]);
+        
+        // 找到所有父节点并展开
+        let parent = locationToSelect.parent_id;
+        const parentsToExpand = [];
+        
+        while (parent) {
+          parentsToExpand.push(`${parent}`);
+          const parentLocation = locations.find(loc => loc.id === parent);
+          parent = parentLocation ? parentLocation.parent_id : null;
+        }
+        
+        if (parentsToExpand.length > 0) {
+          setExpanded(prev => [...new Set([...prev, ...parentsToExpand])]);
+        }
+        
+        // 选中后自动设置为编辑状态
+        setEditingLocation(locationToSelect);
+        setOpenDialog(true);
+      }
+    }
+  }, [locations, selectedLocationId]);
 
   // 处理表单输入变化
   const handleInputChange = (e) => {

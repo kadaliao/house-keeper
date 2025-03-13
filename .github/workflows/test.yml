@@ -13,11 +13,20 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v3
       
-      - name: 安装Docker Compose
+      - name: 安装Docker Compose插件
         run: |
-          sudo apt-get update
-          sudo apt-get install -y docker-compose
-          docker-compose version
+          # 确保Docker Engine已安装
+          docker --version
+          
+          # 确保Docker Compose插件已安装（Ubuntu runner已预装）
+          if ! docker compose version &>/dev/null; then
+            echo "安装Docker Compose插件..."
+            sudo apt-get update
+            sudo apt-get install -y docker-compose-plugin
+          fi
+          
+          # 验证Docker Compose安装
+          docker compose version
       
       - name: 设置测试环境变量
         run: |
@@ -25,7 +34,7 @@ jobs:
           cp frontend/.env.development frontend/.env
       
       - name: 构建Docker容器
-        run: docker-compose up -d
+        run: docker compose up -d
       
       - name: 等待服务启动
         run: |
@@ -33,10 +42,10 @@ jobs:
           sleep 30
       
       - name: 运行后端测试
-        run: docker-compose exec -T backend pytest
+        run: docker compose exec -T backend pytest
       
       - name: 运行前端测试
-        run: docker-compose exec -T frontend npm test -- --watchAll=false
+        run: docker compose exec -T frontend npm test -- --watchAll=false
       
       - name: 停止容器
-        run: docker-compose down 
+        run: docker compose down 

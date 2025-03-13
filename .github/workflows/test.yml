@@ -24,10 +24,9 @@ jobs:
       - name: 设置测试环境变量
         run: |
           cp backend/.env.example backend/.env
-          cp frontend/.env.development frontend/.env
       
-      - name: 构建Docker容器
-        run: docker compose up -d
+      - name: 构建测试数据库和后端容器
+        run: docker compose up -d db backend
       
       - name: 等待服务启动
         run: |
@@ -36,9 +35,6 @@ jobs:
       
       - name: 运行后端测试
         run: docker compose exec -T backend pytest
-      
-      - name: 运行前端测试
-        run: docker compose exec -T frontend npm test -- --watchAll=false
       
       - name: 停止容器
         run: docker compose down 

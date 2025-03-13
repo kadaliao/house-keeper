@@ -453,11 +453,17 @@ const LocationsPage = () => {
   // 处理图片上传
   const handleImageUpload = async (event) => {
     const file = event.target.files[0];
-    if (!file) return;
+    if (!file) {
+      console.log('没有选择文件');
+      return;
+    }
+
+    console.log('选择的文件:', file.name, '类型:', file.type, '大小:', file.size);
 
     // 检查文件类型
     const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!validTypes.includes(file.type)) {
+      console.error('无效的文件类型:', file.type);
       setSnackbar({
         open: true,
         message: '只支持JPG、PNG、GIF和WEBP格式的图片',
@@ -468,20 +474,40 @@ const LocationsPage = () => {
 
     try {
       setUploadingImage(true);
+      console.log('开始上传图片...');
+      
+      // 检查是否已导入uploadImage函数
+      if (typeof uploadImage !== 'function') {
+        console.error('uploadImage 函数未定义，请检查导入');
+        throw new Error('上传服务不可用');
+      }
+      
       const result = await uploadImage(file);
-      console.log('图片上传结果:', result);
+      console.log('图片上传完成，结果:', result);
+      
+      if (!result || !result.url) {
+        console.error('上传服务返回的结果无效:', result);
+        throw new Error('上传服务返回无效结果');
+      }
+      
       console.log('上传服务返回的图片URL:', result.url);
       
       // 直接使用uploadImage返回的完整URL
-      setFormData({
-        ...formData,
-        image_url: result.url
+      setFormData(prevData => {
+        console.log('更新formData图片URL:', result.url);
+        return {
+          ...prevData,
+          image_url: result.url
+        };
       });
       
       // 更新显示文件名
       setSelectedFileName(file.name);
+      console.log('设置文件名:', file.name);
+      
       // 设置图片预览
       setImagePreview(result.url);
+      console.log('设置图片预览:', result.url);
       
       setSnackbar({
         open: true,
@@ -489,10 +515,10 @@ const LocationsPage = () => {
         severity: 'success'
       });
     } catch (error) {
-      console.error('图片上传失败:', error);
+      console.error('图片上传失败，详细错误:', error);
       setSnackbar({
         open: true,
-        message: '图片上传失败，请重试',
+        message: `图片上传失败: ${error.message || '未知错误'}`,
         severity: 'error'
       });
     } finally {
@@ -530,28 +556,39 @@ const LocationsPage = () => {
         return '';
       }
       
-      const API_URL = process.env.REACT_APP_API_URL || '/api/v1';
-      console.log('getImageUrl处理图片URL:', url, 'API_URL:', API_URL);
-      
-      // 检查URL是否已经包含API_URL前缀或是完整的HTTP(S)URL
-      if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith(API_URL)) {
-        console.log('图片URL已经是完整路径，不需要添加前缀:', url);
+      // 如果已经是完整URL则直接返回
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        console.log('URL已是HTTP或HTTPS完整路径，直接返回:', url);
         return url;
       }
       
       // 检查URL是否是数据URL (base64)
       if (url.startsWith('data:')) {
-        console.log('图片URL是data:URL格式，不需要处理:', url.substring(0, 30) + '...');
+        console.log('URL是data:格式，直接返回');
         return url;
+      }
+      
+      // 获取API基础URL
+      const apiUrl = process.env.REACT_APP_API_URL || '/api/v1';
+      console.log('API URL:', apiUrl);
+      
+      // 从API_URL中提取基础URL部分（去掉/api/v1）
+      let baseUrl = '';
+      if (apiUrl.includes('/api/v1')) {
+        baseUrl = apiUrl.substring(0, apiUrl.indexOf('/api/v1'));
+        console.log('从API URL提取的基础URL:', baseUrl);
       }
       
       // 确保URL以斜杠开头
       const formattedUrl = url.startsWith('/') ? url : `/${url}`;
-      const fullUrl = `${API_URL}${formattedUrl}`;
-      console.log('图片URL添加API_URL前缀后:', fullUrl);
+      
+      // 组合完整URL
+      const fullUrl = `${baseUrl}${formattedUrl}`;
+      console.log('最终完整URL:', fullUrl);
+      
       return fullUrl;
     } catch (error) {
-      console.error('处理图片URL时出错:', error, 'URL:', url);
+      console.error('处理图片URL出错:', error, 'URL:', url);
       return '';
     }
   };
@@ -583,9 +620,11 @@ const LocationsPage = () => {
                   alt={location.name}
                   onError={(e) => {
                     console.error('图片加载失败:', displayImageUrl);
+                    console.log('使用占位图片替代');
                     e.target.src = 'https://via.placeholder.com/140x140?text=图片加载失败';
-                    e.target.onerror = null;
+                    e.target.onerror = null; // 防止无限循环
                   }}
+                  sx={{ objectFit: 'contain', bgcolor: '#f5f5f5' }}
                 />
                 <CardContent>
                   <Typography gutterBottom variant="h6" component="div">
@@ -772,8 +811,9 @@ const LocationsPage = () => {
                       }} 
                       onError={(e) => {
                         console.error('预览图片加载失败:', imagePreview || formData.image_url);
+                        console.log('替换为占位图片');
                         e.target.src = 'https://via.placeholder.com/400x200?text=图片预览失败';
-                        e.target.onerror = null;
+                        e.target.onerror = null; // 防止无限循环
                       }}
                     />
                     <IconButton

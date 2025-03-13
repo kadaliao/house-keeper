@@ -74,6 +74,7 @@ const LocationsPage = () => {
 
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
+  const [selectedFileName, setSelectedFileName] = useState('');
   const fileInputRef = useRef(null);
 
   const location = useLocation();
@@ -84,33 +85,39 @@ const LocationsPage = () => {
 
   const [viewMode, setViewMode] = useState('tree');
 
-  // 获取所有位置
-  useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        setLoading(true);
-        const locationsData = await getLocations();
-        
-        // 确保每个位置都有ID，对数据进行预处理
-        const processedData = locationsData.map((loc, index) => {
-          if (!loc.id) {
-            console.warn('发现没有ID的位置项:', loc);
-            // 使用随机字符串确保ID不会重复
-            return { ...loc, id: `missing-id-${index}-${Math.random().toString(36).substring(2, 10)}` };
-          }
-          return loc;
-        });
-        
-        setLocations(processedData);
-        setError(null);
-      } catch (err) {
-        console.error('获取位置数据失败:', err);
-        setError('获取位置数据失败，请稍后重试');
-      } finally {
-        setLoading(false);
-      }
-    };
+  // 获取位置列表数据
+  const fetchLocations = async () => {
+    try {
+      setLoading(true);
+      console.log('开始获取位置列表数据');
+      const locationsData = await getLocations();
+      console.log('获取到的位置列表数据:', locationsData);
+      
+      // 确保每个位置都有有效的ID
+      const processedData = locationsData.map((loc, index) => {
+        if (!loc.id) {
+          console.warn('位置缺少ID:', loc);
+          return { ...loc, id: `temp-id-${index}` };
+        }
+        return loc;
+      });
+      
+      setLocations(processedData);
+    } catch (error) {
+      console.error('获取位置列表失败:', error);
+      setSnackbar({
+        open: true,
+        message: '获取位置列表失败，请刷新页面重试',
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // 组件挂载时获取位置数据
+  useEffect(() => {
+    console.log('LocationsPage组件挂载，开始获取位置数据');
     fetchLocations();
   }, []);
 
@@ -169,24 +176,30 @@ const LocationsPage = () => {
 
   // 打开编辑位置对话框
   const handleOpenEditDialog = (location) => {
-    if (!location || !location.id) {
-      console.error('无效的位置对象:', location);
-      setSnackbar({
-        open: true,
-        message: '无法编辑位置，无效的位置数据',
-        severity: 'error'
-      });
-      return;
-    }
+    console.log('打开编辑对话框, 位置数据:', location);
     
     setEditingLocation(location);
-    setFormData({
-      name: location.name,
-      description: location.description || '',
-      parent_id: location.parent_id || '',
-      image_url: location.image_url || ''
-    });
-    setImagePreview(location.image_url || null);
+    if (location) {
+      const imageUrl = location.image_url || '';
+      console.log('编辑位置的图片URL:', imageUrl);
+      
+      setFormData({
+        name: location.name || '',
+        description: location.description || '',
+        parent_id: location.parent_id || '',
+        image_url: imageUrl
+      });
+      // 在编辑模式下，初始时不显示文件名，因为这是已保存的URL
+      setImagePreview(null);
+    } else {
+      setFormData({
+        name: '',
+        description: '',
+        parent_id: '',
+        image_url: ''
+      });
+      setImagePreview(null);
+    }
     setOpenDialog(true);
   };
 
@@ -197,84 +210,41 @@ const LocationsPage = () => {
 
   // 保存位置
   const handleSaveLocation = async () => {
+    if (!formData.name) {
+      setSnackbar({ open: true, message: '位置名称不能为空', severity: 'error' });
+      return;
+    }
+
     try {
       setLoading(true);
-      
-      // 验证必填字段
-      if (!formData.name) {
-        setSnackbar({
-          open: true,
-          message: '位置名称不能为空',
-          severity: 'error'
-        });
-        setLoading(false);
-        return;
-      }
-
-      // 确保parent_id是有效值或null
       const locationData = {
-        ...formData,
-        parent_id: formData.parent_id && formData.parent_id !== '' ? formData.parent_id : null,
-        image_url: formData.image_url || null
+        name: formData.name,
+        parentId: formData.parent_id === 0 ? null : formData.parent_id,
+        description: formData.description || '',
+        imageUrl: formData.image_url || ''
       };
+      
+      console.log('保存位置前的数据:', locationData);
+      console.log('保存的图片URL:', locationData.imageUrl);
 
-      console.log('保存位置数据:', locationData);
-      
-      let savedLocation;
-      
+      let response;
       if (editingLocation) {
-        // 更新位置
-        savedLocation = await updateLocation(editingLocation.id, locationData);
-        setSnackbar({
-          open: true,
-          message: '位置更新成功',
-          severity: 'success'
-        });
+        response = await updateLocation(editingLocation.id, locationData);
+        setSnackbar({ open: true, message: '位置更新成功', severity: 'success' });
+        console.log('位置更新成功:', response);
       } else {
-        // 创建新位置
-        savedLocation = await createLocation(locationData);
-        setSnackbar({
-          open: true,
-          message: '位置添加成功',
-          severity: 'success'
-        });
+        response = await createLocation(locationData);
+        setSnackbar({ open: true, message: '位置创建成功', severity: 'success' });
+        console.log('位置创建成功:', response);
       }
-
-      // 更新位置列表
-      const fetchLocations = async () => {
-        try {
-          const locationsData = await getLocations();
-          
-          // 确保每个位置都有ID，对数据进行预处理
-          const processedData = locationsData.map((loc, index) => {
-            if (!loc.id) {
-              console.warn('发现没有ID的位置项:', loc);
-              // 生成唯一ID，避免ID冲突
-              return { ...loc, id: `missing-id-${index}-${Math.random().toString(36).substring(2, 10)}` };
-            }
-            return loc;
-          });
-          
-          setLocations(processedData);
-        } catch (err) {
-          console.error('刷新位置列表失败:', err);
-          setSnackbar({
-            open: true,
-            message: '刷新位置列表失败，请刷新页面重试',
-            severity: 'error'
-          });
-        }
-      };
-      await fetchLocations();
-
+      
+      // 确保刷新位置列表
+      fetchLocations();
       handleCloseDialog();
-    } catch (err) {
-      console.error('保存位置失败:', err);
-      setSnackbar({
-        open: true,
-        message: '保存位置失败，请稍后重试',
-        severity: 'error'
-      });
+    } catch (error) {
+      console.error('保存位置失败:', error);
+      const errorMessage = error.response?.data?.message || error.message || '操作失败';
+      setSnackbar({ open: true, message: errorMessage, severity: 'error' });
     } finally {
       setLoading(false);
     }
@@ -470,17 +440,17 @@ const LocationsPage = () => {
   // 获取位置树
   const locationTree = buildLocationTree(null);
 
-  const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
+  // 处理图片上传
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0];
     if (!file) return;
 
-    const fileType = file.type;
-    const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    
-    if (!validImageTypes.includes(fileType)) {
+    // 检查文件类型
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
       setSnackbar({
         open: true,
-        message: '只支持上传 JPG、PNG、GIF 和 WebP 格式的图片',
+        message: '只支持JPG、PNG、GIF和WEBP格式的图片',
         severity: 'error'
       });
       return;
@@ -489,12 +459,18 @@ const LocationsPage = () => {
     try {
       setUploadingImage(true);
       const result = await uploadImage(file);
+      console.log('图片上传结果:', result);
+      console.log('上传服务返回的图片URL:', result.url);
       
+      // 直接使用uploadImage返回的完整URL
       setFormData({
         ...formData,
         image_url: result.url
       });
       
+      // 更新显示文件名
+      setSelectedFileName(file.name);
+      // 设置图片预览
       setImagePreview(result.url);
       
       setSnackbar({
@@ -514,99 +490,117 @@ const LocationsPage = () => {
     }
   };
 
+  // 移除已上传的图片
   const handleRemoveImage = () => {
+    console.log('移除图片前的formData:', formData);
+    
+    // 清除文件输入
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    
+    // 清除表单数据中的图片URL
     setFormData({
       ...formData,
       image_url: ''
     });
-    setImagePreview(null);
     
-    // 重置文件输入控件
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    // 清除图片预览和文件名
+    setImagePreview(null);
+    setSelectedFileName('');
+    
+    console.log('移除图片后的formData:', {...formData, image_url: ''});
   };
 
+  // 修复图片URL处理函数，避免重复添加API_URL
   const getImageUrl = (url) => {
-    if (!url) return null;
+    if (!url) {
+      return '';
+    }
     
-    // 如果已经是完整URL，则直接返回
-    if (url.startsWith('http://') || url.startsWith('https://')) {
+    const API_URL = process.env.REACT_APP_API_URL || '/api/v1';
+    console.log('getImageUrl 函数处理图片URL:', url, 'API_URL:', API_URL);
+    
+    // 检查URL是否已经包含API_URL前缀
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith(API_URL)) {
+      console.log('图片URL已经是完整路径，不需要添加前缀:', url);
       return url;
     }
     
-    // 否则添加API基础路径
-    const apiBaseUrl = process.env.REACT_APP_API_URL || '/api/v1';
-    const baseUrl = apiBaseUrl.replace('/api/v1', '');
-    return `${baseUrl}${url}`;
+    // 确保URL以斜杠开头
+    const formattedUrl = url.startsWith('/') ? url : `/${url}`;
+    const fullUrl = `${API_URL}${formattedUrl}`;
+    console.log('图片URL添加API_URL前缀后:', fullUrl);
+    return fullUrl;
   };
 
   // 渲染位置卡片视图
   const renderLocationCards = () => {
-    if (locations.length === 0) {
+    if (!locations?.length) {
       return (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          暂无位置数据，请点击"添加顶级位置"按钮添加
-        </Alert>
+        <Typography sx={{ p: 2 }} color="textSecondary" align="center">
+          暂无位置数据
+        </Typography>
       );
     }
-    
+
     return (
-      <Grid container spacing={3}>
-        {locations.map(location => (
-          <Grid item xs={12} sm={6} md={4} key={location.id}>
-            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-              {location.image_url ? (
+      <Grid container spacing={2} sx={{ p: 2 }}>
+        {locations.map((location) => {
+          console.log('渲染位置卡片:', location.name, '图片URL:', location.image_url);
+          const displayImageUrl = getImageUrl(location.image_url);
+          console.log('处理后的显示图片URL:', displayImageUrl);
+          
+          return (
+            <Grid item xs={12} sm={6} md={4} key={location.id}>
+              <Card elevation={3}>
                 <CardMedia
                   component="img"
-                  height="160"
-                  image={getImageUrl(location.image_url)}
+                  height="140"
+                  image={displayImageUrl || '/static/images/placeholder.png'}
                   alt={location.name}
-                  sx={{ objectFit: 'contain', bgcolor: '#f5f5f5' }}
+                  onError={(e) => {
+                    console.error('图片加载失败:', displayImageUrl);
+                    e.target.src = '/static/images/placeholder.png';
+                    e.target.onerror = null;
+                  }}
                 />
-              ) : (
-                <Box sx={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f5f5' }}>
-                  <LocationIcon sx={{ fontSize: 60, color: 'primary.light' }} />
-                </Box>
-              )}
-              <CardContent sx={{ flexGrow: 1 }}>
-                <Typography gutterBottom variant="h6" component="h2">
-                  {location.name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  {location.description || '无描述'}
-                </Typography>
-                {location.parent_id && (
-                  <Chip 
+                <CardContent>
+                  <Typography gutterBottom variant="h6" component="div">
+                    {location.name}
+                  </Typography>
+                  {location.description && (
+                    <Typography variant="body2" color="text.secondary">
+                      {location.description}
+                    </Typography>
+                  )}
+                </CardContent>
+                <CardActions>
+                  <Button 
                     size="small" 
-                    label={`父位置: ${locations.find(loc => loc.id === location.parent_id)?.name || '未知'}`}
-                    sx={{ mb: 1 }}
-                  />
-                )}
-                <Button 
-                  size="small" 
-                  startIcon={<Inventory2 />}
-                  variant="outlined" 
-                  onClick={() => navigate(`/items?location=${location.id}`)}
-                  sx={{ mt: 1 }}
-                >
-                  查看物品
-                </Button>
-              </CardContent>
-              <CardActions>
-                <Button size="small" onClick={() => handleOpenEditDialog(location)}>
-                  编辑
-                </Button>
-                <Button size="small" color="error" onClick={() => handleDeleteLocation(location.id)}>
-                  删除
-                </Button>
-                <Button size="small" color="primary" onClick={() => handleOpenAddDialog(location.id)}>
-                  添加子位置
-                </Button>
-              </CardActions>
-            </Card>
-          </Grid>
-        ))}
+                    startIcon={<Inventory2 />}
+                    onClick={() => navigate(`/items?location=${location.id}`)}
+                  >
+                    查看物品
+                  </Button>
+                  <Box sx={{ flexGrow: 1 }} />
+                  <IconButton 
+                    size="small" 
+                    onClick={() => handleOpenEditDialog(location)}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton 
+                    size="small" 
+                    onClick={() => handleDeleteLocation(location.id)}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </CardActions>
+              </Card>
+            </Grid>
+          );
+        })}
       </Grid>
     );
   };
@@ -737,46 +731,71 @@ const LocationsPage = () => {
                 </FormControl>
               </Grid>
               <Grid item xs={12}>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>位置图片</Typography>
-                <input
-                  type="file"
-                  accept="image/*"
-                  id="location-image-upload"
-                  style={{ display: 'none' }}
-                  onChange={handleImageUpload}
-                  ref={fileInputRef}
-                />
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Button
-                    variant="outlined"
-                    component="label"
-                    htmlFor="location-image-upload"
-                    startIcon={<UploadIcon />}
-                    disabled={uploadingImage}
-                  >
-                    {uploadingImage ? '上传中...' : '上传图片'}
-                  </Button>
-                  {imagePreview && (
-                    <Button 
-                      color="error" 
-                      onClick={handleRemoveImage} 
-                      sx={{ ml: 2 }}
-                      disabled={uploadingImage}
-                    >
-                      移除图片
-                    </Button>
-                  )}
-                  {uploadingImage && <CircularProgress size={24} sx={{ ml: 2 }} />}
-                </Box>
-                {imagePreview && (
-                  <Box sx={{ mt: 2, maxWidth: '100%', maxHeight: 200, overflow: 'hidden' }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  位置图片
+                </Typography>
+                
+                {/* 显示已上传图片的预览 */}
+                {(imagePreview || formData.image_url) && (
+                  <Box sx={{ mb: 2, position: 'relative' }}>
                     <img 
-                      src={getImageUrl(imagePreview)} 
+                      src={imagePreview || getImageUrl(formData.image_url)} 
                       alt="位置图片预览" 
-                      style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain' }} 
+                      style={{ 
+                        width: '100%', 
+                        maxHeight: '200px', 
+                        objectFit: 'contain', 
+                        border: '1px solid #eee', 
+                        borderRadius: '4px' 
+                      }} 
+                      onError={(e) => {
+                        console.error('预览图片加载失败:', imagePreview || formData.image_url);
+                        e.target.src = '/static/images/placeholder.png';
+                      }}
                     />
+                    <IconButton
+                      size="small"
+                      sx={{
+                        position: 'absolute',
+                        top: 5,
+                        right: 5,
+                        bgcolor: 'rgba(255,255,255,0.8)',
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' }
+                      }}
+                      onClick={handleRemoveImage}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
                   </Box>
                 )}
+                
+                {/* 上传按钮 */}
+                <Button
+                  variant="outlined"
+                  component="label"
+                  fullWidth
+                  startIcon={<UploadIcon />}
+                  disabled={uploadingImage}
+                >
+                  {uploadingImage ? '上传中...' : '上传位置图片'}
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/jpeg,image/png,image/gif,image/webp"
+                    onChange={handleImageUpload}
+                    ref={fileInputRef}
+                  />
+                </Button>
+                
+                {selectedFileName && (
+                  <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+                    已选择: {selectedFileName}
+                  </Typography>
+                )}
+                
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  支持JPG、PNG、GIF和WebP格式，建议尺寸500x500像素以上
+                </Typography>
               </Grid>
             </Grid>
           </Box>

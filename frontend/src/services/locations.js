@@ -3,6 +3,7 @@ import api from './api';
 export const getLocations = async (params = {}) => {
   try {
     const response = await api.get('/locations', { params });
+    console.log('获取位置列表返回数据:', response.data);
     return response.data;
   } catch (error) {
     console.error('获取位置列表失败:', error);
@@ -40,7 +41,9 @@ export const createLocation = async (locationData) => {
   }
   
   try {
+    console.log('正在创建位置:', locationData);
     const response = await api.post('/locations', locationData);
+    console.log('位置创建返回数据:', response.data);
     return response.data;
   } catch (error) {
     console.error('创建位置失败:', error, locationData);
@@ -58,7 +61,9 @@ export const updateLocation = async (id, locationData) => {
   }
   
   try {
+    console.log(`正在更新位置(ID: ${id}):`, locationData);
     const response = await api.put(`/locations/${id}`, locationData);
+    console.log(`位置更新返回数据(ID: ${id}):`, response.data);
     return response.data;
   } catch (error) {
     console.error(`更新位置失败 (ID: ${id}):`, error, locationData);

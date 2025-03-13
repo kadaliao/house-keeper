@@ -21,9 +21,14 @@ jobs:
       - name: 验证Docker Compose版本
         run: docker compose version
       
-      - name: 设置测试环境变量
+      - name: 设置环境变量
         run: |
+          # 后端环境变量
           cp backend/.env.example backend/.env
+          
+          # 创建空的前端环境文件以避免Docker Compose报错
+          mkdir -p frontend
+          touch frontend/.env
       
       - name: 构建测试数据库和后端容器
         run: docker compose up -d db backend

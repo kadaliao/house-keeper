@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Typography, 
   Paper, 
@@ -27,7 +27,9 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Collapse
+  Collapse,
+  CardMedia,
+  Chip
 } from '@mui/material';
 import { SimpleTreeView } from '@mui/x-tree-view/SimpleTreeView';
 import { TreeItem } from '@mui/x-tree-view/TreeItem';
@@ -39,11 +41,15 @@ import {
   ExpandMore as ExpandMoreIcon,
   ChevronRight as ChevronRightIcon,
   Folder as FolderIcon,
-  FolderOpen as FolderOpenIcon
+  FolderOpen as FolderOpenIcon,
+  Upload as UploadIcon,
+  Inventory2
 } from '@mui/icons-material';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { getLocations, createLocation, updateLocation, deleteLocation } from '../../services/locations';
+import { uploadImage } from '../../services/uploads';
+import { getItemsByLocation } from '../../services/items';
 
 const LocationsPage = () => {
   const [locations, setLocations] = useState([]);
@@ -62,12 +68,21 @@ const LocationsPage = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    parent_id: ''
+    parent_id: '',
+    image_url: ''
   });
+
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
+  const fileInputRef = useRef(null);
 
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const selectedLocationId = queryParams.get('selected');
+
+  const navigate = useNavigate();
+
+  const [viewMode, setViewMode] = useState('tree');
 
   // 获取所有位置
   useEffect(() => {
@@ -145,8 +160,10 @@ const LocationsPage = () => {
     setFormData({
       name: '',
       description: '',
-      parent_id: parentId || ''
+      parent_id: parentId,
+      image_url: ''
     });
+    setImagePreview(null);
     setOpenDialog(true);
   };
 
@@ -164,10 +181,12 @@ const LocationsPage = () => {
     
     setEditingLocation(location);
     setFormData({
-      name: location.name || '',
+      name: location.name,
       description: location.description || '',
-      parent_id: location.parent_id || ''
+      parent_id: location.parent_id || '',
+      image_url: location.image_url || ''
     });
+    setImagePreview(location.image_url || null);
     setOpenDialog(true);
   };
 
@@ -195,7 +214,8 @@ const LocationsPage = () => {
       // 确保parent_id是有效值或null
       const locationData = {
         ...formData,
-        parent_id: formData.parent_id && formData.parent_id !== '' ? formData.parent_id : null
+        parent_id: formData.parent_id && formData.parent_id !== '' ? formData.parent_id : null,
+        image_url: formData.image_url || null
       };
 
       console.log('保存位置数据:', locationData);
@@ -450,6 +470,147 @@ const LocationsPage = () => {
   // 获取位置树
   const locationTree = buildLocationTree(null);
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const fileType = file.type;
+    const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    
+    if (!validImageTypes.includes(fileType)) {
+      setSnackbar({
+        open: true,
+        message: '只支持上传 JPG、PNG、GIF 和 WebP 格式的图片',
+        severity: 'error'
+      });
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      const result = await uploadImage(file);
+      
+      setFormData({
+        ...formData,
+        image_url: result.url
+      });
+      
+      setImagePreview(result.url);
+      
+      setSnackbar({
+        open: true,
+        message: '图片上传成功',
+        severity: 'success'
+      });
+    } catch (error) {
+      console.error('图片上传失败:', error);
+      setSnackbar({
+        open: true,
+        message: '图片上传失败，请重试',
+        severity: 'error'
+      });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setFormData({
+      ...formData,
+      image_url: ''
+    });
+    setImagePreview(null);
+    
+    // 重置文件输入控件
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const getImageUrl = (url) => {
+    if (!url) return null;
+    
+    // 如果已经是完整URL，则直接返回
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // 否则添加API基础路径
+    const apiBaseUrl = process.env.REACT_APP_API_URL || '/api/v1';
+    const baseUrl = apiBaseUrl.replace('/api/v1', '');
+    return `${baseUrl}${url}`;
+  };
+
+  // 渲染位置卡片视图
+  const renderLocationCards = () => {
+    if (locations.length === 0) {
+      return (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          暂无位置数据，请点击"添加顶级位置"按钮添加
+        </Alert>
+      );
+    }
+    
+    return (
+      <Grid container spacing={3}>
+        {locations.map(location => (
+          <Grid item xs={12} sm={6} md={4} key={location.id}>
+            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              {location.image_url ? (
+                <CardMedia
+                  component="img"
+                  height="160"
+                  image={getImageUrl(location.image_url)}
+                  alt={location.name}
+                  sx={{ objectFit: 'contain', bgcolor: '#f5f5f5' }}
+                />
+              ) : (
+                <Box sx={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f5f5' }}>
+                  <LocationIcon sx={{ fontSize: 60, color: 'primary.light' }} />
+                </Box>
+              )}
+              <CardContent sx={{ flexGrow: 1 }}>
+                <Typography gutterBottom variant="h6" component="h2">
+                  {location.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  {location.description || '无描述'}
+                </Typography>
+                {location.parent_id && (
+                  <Chip 
+                    size="small" 
+                    label={`父位置: ${locations.find(loc => loc.id === location.parent_id)?.name || '未知'}`}
+                    sx={{ mb: 1 }}
+                  />
+                )}
+                <Button 
+                  size="small" 
+                  startIcon={<Inventory2 />}
+                  variant="outlined" 
+                  onClick={() => navigate(`/items?location=${location.id}`)}
+                  sx={{ mt: 1 }}
+                >
+                  查看物品
+                </Button>
+              </CardContent>
+              <CardActions>
+                <Button size="small" onClick={() => handleOpenEditDialog(location)}>
+                  编辑
+                </Button>
+                <Button size="small" color="error" onClick={() => handleDeleteLocation(location.id)}>
+                  删除
+                </Button>
+                <Button size="small" color="primary" onClick={() => handleOpenAddDialog(location.id)}>
+                  添加子位置
+                </Button>
+              </CardActions>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    );
+  };
+
   return (
     <Paper elevation={3} sx={{ p: 3 }}>
       <Box sx={{ mb: 4 }}>
@@ -461,7 +622,7 @@ const LocationsPage = () => {
         </Typography>
         
         {/* 添加位置按钮 */}
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between' }}>
           <Button
             variant="contained"
             color="primary"
@@ -469,6 +630,13 @@ const LocationsPage = () => {
             onClick={() => handleOpenAddDialog()}
           >
             添加顶级位置
+          </Button>
+          
+          <Button
+            color="secondary"
+            onClick={() => setViewMode(viewMode === 'tree' ? 'cards' : 'tree')}
+          >
+            {viewMode === 'tree' ? '切换到卡片视图' : '切换到树形视图'}
           </Button>
         </Box>
 
@@ -479,16 +647,12 @@ const LocationsPage = () => {
           </Alert>
         )}
 
-        {/* 位置树形结构 */}
+        {/* 位置展示 */}
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
             <CircularProgress />
           </Box>
-        ) : locations.length === 0 ? (
-          <Alert severity="info" sx={{ mb: 3 }}>
-            暂无位置数据，请点击"添加顶级位置"按钮添加
-          </Alert>
-        ) : (
+        ) : viewMode === 'tree' ? (
           <Card variant="outlined" sx={{ mt: 2 }}>
             <CardContent>
               <SimpleTreeView
@@ -512,75 +676,120 @@ const LocationsPage = () => {
               </SimpleTreeView>
             </CardContent>
           </Card>
+        ) : (
+          <Box sx={{ mt: 2 }}>
+            {renderLocationCards()}
+          </Box>
         )}
       </Box>
 
       {/* 添加/编辑位置对话框 */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {editingLocation ? '编辑位置' : '添加位置'}
-        </DialogTitle>
-        <DialogContent dividers>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="位置名称"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                required
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="描述"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                multiline
-                rows={3}
-                margin="normal"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControl fullWidth margin="normal">
-                <InputLabel id="parent-location-label">父位置</InputLabel>
-                <Select
-                  labelId="parent-location-label"
-                  name="parent_id"
-                  value={formData.parent_id}
+      <Dialog open={openDialog} onClose={handleCloseDialog} fullWidth maxWidth="md">
+        <DialogTitle>{editingLocation ? '编辑位置' : '添加位置'}</DialogTitle>
+        <DialogContent>
+          <Box component="form" sx={{ mt: 2 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="位置名称"
+                  name="name"
+                  value={formData.name}
                   onChange={handleInputChange}
-                  label="父位置"
-                >
-                  <MenuItem value="">
-                    <em>无 (顶级位置)</em>
-                  </MenuItem>
-                  {locations
-                    .filter(loc => !editingLocation || loc.id !== editingLocation.id)
-                    .map((location) => (
-                      <MenuItem key={location.id} value={location.id}>
-                        {location.name}
+                  required
+                  autoFocus
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="描述"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  multiline
+                  rows={3}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel id="parent-location-label">父位置</InputLabel>
+                  <Select
+                    labelId="parent-location-label"
+                    name="parent_id"
+                    value={formData.parent_id}
+                    onChange={handleInputChange}
+                    label="父位置"
+                  >
+                    <MenuItem value="">
+                      <em>无 (顶级位置)</em>
+                    </MenuItem>
+                    {locations.map((loc) => (
+                      <MenuItem 
+                        key={loc.id} 
+                        value={loc.id}
+                        disabled={editingLocation && loc.id === editingLocation.id}
+                      >
+                        {loc.name}
                       </MenuItem>
                     ))}
-                </Select>
-              </FormControl>
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>位置图片</Typography>
+                <input
+                  type="file"
+                  accept="image/*"
+                  id="location-image-upload"
+                  style={{ display: 'none' }}
+                  onChange={handleImageUpload}
+                  ref={fileInputRef}
+                />
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    htmlFor="location-image-upload"
+                    startIcon={<UploadIcon />}
+                    disabled={uploadingImage}
+                  >
+                    {uploadingImage ? '上传中...' : '上传图片'}
+                  </Button>
+                  {imagePreview && (
+                    <Button 
+                      color="error" 
+                      onClick={handleRemoveImage} 
+                      sx={{ ml: 2 }}
+                      disabled={uploadingImage}
+                    >
+                      移除图片
+                    </Button>
+                  )}
+                  {uploadingImage && <CircularProgress size={24} sx={{ ml: 2 }} />}
+                </Box>
+                {imagePreview && (
+                  <Box sx={{ mt: 2, maxWidth: '100%', maxHeight: 200, overflow: 'hidden' }}>
+                    <img 
+                      src={getImageUrl(imagePreview)} 
+                      alt="位置图片预览" 
+                      style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain' }} 
+                    />
+                  </Box>
+                )}
+              </Grid>
             </Grid>
-          </Grid>
+          </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog} color="inherit">
-            取消
-          </Button>
+          <Button onClick={handleCloseDialog} color="inherit">取消</Button>
           <Button 
             onClick={handleSaveLocation} 
-            color="primary" 
-            variant="contained"
-            disabled={loading}
+            variant="contained" 
+            color="primary"
+            disabled={!formData.name || uploadingImage}
           >
-            {loading ? <CircularProgress size={24} /> : '保存'}
+            {editingLocation ? '保存修改' : '添加位置'}
           </Button>
         </DialogActions>
       </Dialog>

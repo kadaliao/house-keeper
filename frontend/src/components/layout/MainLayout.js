@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar,
@@ -24,6 +24,19 @@ import {
   Button,
   Chip,
   useMediaQuery,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  TextField,
+  InputAdornment,
+  CircularProgress,
+  Card,
+  CardContent,
+  CardActionArea,
+  Grid,
+  Paper,
+  Tab,
+  Tabs
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -40,10 +53,13 @@ import {
   Brightness4 as DarkModeIcon,
   Brightness7 as LightModeIcon,
   ChevronLeft as ChevronLeftIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useReminders } from '../../contexts/ReminderContext';
+import { searchItems } from '../../services/items';
+import { getLocations } from '../../services/locations';
 
 const drawerWidth = 260;
 
@@ -58,6 +74,60 @@ const MainLayout = ({ children }) => {
   const theme = useMuiTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+
+  // 搜索相关状态
+  const [searchDialogOpen, setSearchDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState({
+    items: [],
+    locations: []
+  });
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchTab, setSearchTab] = useState(0);
+
+  // 处理搜索
+  const handleSearch = async (query) => {
+    if (!query.trim()) {
+      setSearchResults({
+        items: [],
+        locations: []
+      });
+      return;
+    }
+
+    setSearchLoading(true);
+    try {
+      // 搜索物品
+      const items = await searchItems({ search: query });
+      
+      // 搜索位置 (简单过滤)
+      const allLocations = await getLocations();
+      const locations = allLocations.filter(loc => 
+        loc.name.toLowerCase().includes(query.toLowerCase()) || 
+        (loc.description && loc.description.toLowerCase().includes(query.toLowerCase()))
+      );
+      
+      setSearchResults({
+        items,
+        locations
+      });
+    } catch (error) {
+      console.error('搜索失败:', error);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // 当搜索查询变化时执行搜索
+  useEffect(() => {
+    const delaySearch = setTimeout(() => {
+      if (searchDialogOpen) {
+        handleSearch(searchQuery);
+      }
+    }, 300);
+    
+    return () => clearTimeout(delaySearch);
+  }, [searchQuery, searchDialogOpen]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -78,6 +148,33 @@ const MainLayout = ({ children }) => {
 
   const handleThemeToggle = () => {
     toggleColorMode();
+  };
+
+  const handleOpenSearchDialog = () => {
+    setSearchDialogOpen(true);
+    setSearchQuery('');
+    setSearchResults({
+      items: [],
+      locations: []
+    });
+  };
+
+  const handleCloseSearchDialog = () => {
+    setSearchDialogOpen(false);
+  };
+
+  const handleSearchTabChange = (event, newValue) => {
+    setSearchTab(newValue);
+  };
+
+  const handleSearchItemClick = (item) => {
+    navigate(`/items/${item.id}`);
+    handleCloseSearchDialog();
+  };
+
+  const handleSearchLocationClick = (location) => {
+    navigate(`/locations?selected=${location.id}`);
+    handleCloseSearchDialog();
   };
 
   const menuItems = [
@@ -314,7 +411,12 @@ const MainLayout = ({ children }) => {
 
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Tooltip title="搜索">
-              <IconButton color="inherit" size="large" sx={{ mr: 1 }}>
+              <IconButton 
+                color="inherit" 
+                size="large" 
+                sx={{ mr: 1 }}
+                onClick={handleOpenSearchDialog}
+              >
                 <SearchIcon />
               </IconButton>
             </Tooltip>
@@ -467,6 +569,188 @@ const MainLayout = ({ children }) => {
         <Toolbar />
         {children}
       </Box>
+
+      {/* 搜索对话框 */}
+      <Dialog 
+        open={searchDialogOpen} 
+        onClose={handleCloseSearchDialog}
+        fullWidth
+        maxWidth="md"
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            maxHeight: '80vh'
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Typography variant="h6">全局搜索</Typography>
+            <IconButton onClick={handleCloseSearchDialog} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <TextField
+            autoFocus
+            margin="dense"
+            fullWidth
+            placeholder="搜索物品、位置..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            variant="outlined"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+              endAdornment: searchLoading && (
+                <InputAdornment position="end">
+                  <CircularProgress size={20} />
+                </InputAdornment>
+              )
+            }}
+            sx={{ mb: 2 }}
+          />
+          
+          {(searchResults.items.length > 0 || searchResults.locations.length > 0) && (
+            <>
+              <Tabs 
+                value={searchTab} 
+                onChange={handleSearchTabChange}
+                sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
+              >
+                <Tab 
+                  label={`物品 (${searchResults.items.length})`} 
+                  id="search-tab-0"
+                  aria-controls="search-tabpanel-0"
+                />
+                <Tab 
+                  label={`位置 (${searchResults.locations.length})`} 
+                  id="search-tab-1"
+                  aria-controls="search-tabpanel-1"
+                />
+              </Tabs>
+              
+              <Box
+                role="tabpanel"
+                hidden={searchTab !== 0}
+                id="search-tabpanel-0"
+                aria-labelledby="search-tab-0"
+              >
+                {searchTab === 0 && (
+                  <Grid container spacing={2}>
+                    {searchResults.items.map((item) => (
+                      <Grid item xs={12} sm={6} key={item.id}>
+                        <Card variant="outlined" sx={{ height: '100%' }}>
+                          <CardActionArea onClick={() => handleSearchItemClick(item)}>
+                            <CardContent>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <InventoryIcon color="primary" sx={{ mr: 1 }} />
+                                <Typography variant="subtitle1" component="div">
+                                  {item.name}
+                                </Typography>
+                              </Box>
+                              {item.description && (
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                  {item.description.length > 100 
+                                    ? `${item.description.substring(0, 100)}...` 
+                                    : item.description}
+                                </Typography>
+                              )}
+                              <Box sx={{ display: 'flex', mt: 1, gap: 1, flexWrap: 'wrap' }}>
+                                {item.category && (
+                                  <Chip 
+                                    label={item.category} 
+                                    size="small" 
+                                    color="primary" 
+                                    variant="outlined" 
+                                  />
+                                )}
+                                {item.location_id && (
+                                  <Chip 
+                                    icon={<LocationIcon />} 
+                                    label={searchResults.locations.find(loc => loc.id === item.location_id)?.name || '位置'} 
+                                    size="small" 
+                                    variant="outlined" 
+                                  />
+                                )}
+                              </Box>
+                            </CardContent>
+                          </CardActionArea>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                )}
+              </Box>
+              
+              <Box
+                role="tabpanel"
+                hidden={searchTab !== 1}
+                id="search-tabpanel-1"
+                aria-labelledby="search-tab-1"
+              >
+                {searchTab === 1 && (
+                  <Grid container spacing={2}>
+                    {searchResults.locations.map((location) => (
+                      <Grid item xs={12} sm={6} key={location.id}>
+                        <Card variant="outlined" sx={{ height: '100%' }}>
+                          <CardActionArea onClick={() => handleSearchLocationClick(location)}>
+                            <CardContent>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <LocationIcon color="primary" sx={{ mr: 1 }} />
+                                <Typography variant="subtitle1" component="div">
+                                  {location.name}
+                                </Typography>
+                              </Box>
+                              {location.description && (
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                  {location.description.length > 100 
+                                    ? `${location.description.substring(0, 100)}...` 
+                                    : location.description}
+                                </Typography>
+                              )}
+                              {location.parent_id && (
+                                <Box sx={{ mt: 1 }}>
+                                  <Chip 
+                                    label={`父位置: ${searchResults.locations.find(loc => loc.id === location.parent_id)?.name || '未知'}`}
+                                    size="small" 
+                                    variant="outlined" 
+                                  />
+                                </Box>
+                              )}
+                            </CardContent>
+                          </CardActionArea>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                )}
+              </Box>
+            </>
+          )}
+          
+          {searchQuery && !searchLoading && searchResults.items.length === 0 && searchResults.locations.length === 0 && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="body1" color="text.secondary">
+                未找到与 "{searchQuery}" 相关的结果
+              </Typography>
+            </Box>
+          )}
+          
+          {!searchQuery && (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <SearchIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="body1" color="text.secondary">
+                输入关键词搜索物品和位置
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

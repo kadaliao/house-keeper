@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { zhCN } from '@mui/material/locale';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -9,6 +9,8 @@ import zhLocale from 'date-fns/locale/zh-CN';
 
 // Contexts
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { useTheme } from './contexts/ThemeContext';
 
 // Layouts
 import MainLayout from './components/layout/MainLayout';
@@ -25,11 +27,11 @@ import SettingsPage from './pages/settings/SettingsPage';
 import ProfilePage from './pages/profile/ProfilePage';
 import ProtectedRoute from './components/common/ProtectedRoute';
 
-// Create a theme instance
-const theme = createTheme(
+// 创建主题函数
+const createAppTheme = (mode) => createTheme(
   {
     palette: {
-      mode: 'light',
+      mode,
       primary: {
         main: '#2E7D32', // 绿色主题，代表家庭、自然
         light: '#4CAF50',
@@ -43,8 +45,8 @@ const theme = createTheme(
         contrastText: '#FFFFFF',
       },
       background: {
-        default: '#F9FAFB',
-        paper: '#FFFFFF',
+        default: mode === 'light' ? '#F9FAFB' : '#121212',
+        paper: mode === 'light' ? '#FFFFFF' : '#1E1E1E',
       },
       success: {
         main: '#4CAF50',
@@ -66,11 +68,11 @@ const theme = createTheme(
         light: '#4FC3F7',
         dark: '#0288D1',
       },
-      divider: 'rgba(0, 0, 0, 0.08)',
+      divider: mode === 'light' ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)',
       text: {
-        primary: '#212121',
-        secondary: '#5C5C5C',
-        disabled: 'rgba(0, 0, 0, 0.38)',
+        primary: mode === 'light' ? '#212121' : '#E0E0E0',
+        secondary: mode === 'light' ? '#5C5C5C' : '#A0A0A0',
+        disabled: mode === 'light' ? 'rgba(0, 0, 0, 0.38)' : 'rgba(255, 255, 255, 0.38)',
       },
     },
     typography: {
@@ -234,9 +236,13 @@ const theme = createTheme(
   zhCN // 使用中文语言包
 );
 
-function App() {
+// AppContent组件，使用ThemeContext的值来动态创建主题
+function AppContent() {
+  const { mode } = useTheme();
+  const theme = React.useMemo(() => createAppTheme(mode), [mode]);
+
   return (
-    <ThemeProvider theme={theme}>
+    <MuiThemeProvider theme={theme}>
       <CssBaseline />
       <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhLocale}>
         <AuthProvider>
@@ -312,6 +318,14 @@ function App() {
           </Router>
         </AuthProvider>
       </LocalizationProvider>
+    </MuiThemeProvider>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
     </ThemeProvider>
   );
 }

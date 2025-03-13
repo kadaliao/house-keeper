@@ -736,3 +736,72 @@
 ### 涉及文件
 - `scripts/seed_database.sh`：数据库填充脚本
 - `docs/开发指南.md`：开发文档更新
+
+## 2025-03-15 实现夜间模式切换功能
+
+### 会话目标
+实现工具栏上的夜间模式切换功能，允许用户在亮色和暗色主题之间切换。
+
+### 实现功能
+- 创建了主题上下文（ThemeContext）用于管理应用的主题模式
+- 实现了动态主题切换功能，支持亮色/暗色模式
+- 在工具栏和侧边栏中添加了主题切换按钮
+- 使用localStorage保存用户的主题偏好
+
+### 关键技术决策
+- 使用React Context API管理全局主题状态
+- 使用localStorage存储用户主题偏好，保证页面刷新后保持一致
+- 基于Material UI的主题系统实现完整的暗色模式
+- 同时在工具栏和侧边栏添加主题切换按钮，提高用户访问性
+
+### 问题解决方案
+- 通过修改Material UI的createTheme函数参数，实现了动态主题切换
+- 使用useMemo优化主题创建过程，避免不必要的重新渲染
+- 通过重命名ThemeProvider解决命名冲突问题
+
+### 采用技术栈
+- 前端：React, React Context API, Material UI
+- 状态管理：React hooks (useState, useEffect, useContext)
+- 存储：localStorage
+- 容器化：Docker, Docker Compose
+
+### 涉及文件
+- 新增：frontend/src/contexts/ThemeContext.js
+- 修改：frontend/src/App.js
+- 修改：frontend/src/components/layout/MainLayout.js
+
+## 2025-03-16 个人资料管理功能实现
+
+### 会话目标
+开发用户个人资料管理功能，允许用户查看和编辑个人信息。
+
+### 实现功能
+- 创建美观的个人资料页面，展示用户基本信息
+- 实现了用户资料编辑功能，包括基本信息（姓名、邮箱）和密码修改
+- 设计了选项卡式界面，将不同类型的编辑操作分组
+- 添加表单验证，确保用户输入的数据合法有效
+- 实现操作反馈，提供加载状态和操作结果提示
+
+### 关键技术决策
+- 使用React状态管理用户表单数据和交互状态
+- 实现选项卡式界面分离不同类型的设置（基本信息/密码修改）
+- 为页面添加明确的编辑/保存/取消操作流程
+- 使用Material UI组件构建现代化UI界面
+- 表单验证确保数据完整性和安全性
+
+### 问题解决方案
+- 使用选项卡界面解决了多种编辑功能在单一页面展示的问题
+- 通过编辑模式状态控制表单的禁用/启用状态
+- 使用表单验证防止无效数据提交到后端
+- 通过后端API错误处理，提供友好的错误反馈
+- 密码修改时实施确认密码验证，提高安全性
+
+### 采用技术栈
+- 前端：React, React Hooks, Material UI
+- 状态管理：React useState, useEffect
+- 数据验证：客户端表单验证
+- API调用：Axios
+
+### 涉及文件
+- frontend/src/pages/profile/ProfilePage.js (主要实现)
+- frontend/src/services/auth.js (API调用)

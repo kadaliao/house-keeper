@@ -17,7 +17,7 @@ import {
   Avatar,
   Menu,
   MenuItem,
-  useTheme,
+  useTheme as useMuiTheme,
   alpha,
   Badge,
   Tooltip,
@@ -42,6 +42,7 @@ import {
   ChevronLeft as ChevronLeftIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const drawerWidth = 260;
 
@@ -49,9 +50,10 @@ const MainLayout = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const { currentUser, logout } = useAuth();
+  const { mode, toggleColorMode } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const theme = useTheme();
+  const theme = useMuiTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -70,6 +72,10 @@ const MainLayout = ({ children }) => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleThemeToggle = () => {
+    toggleColorMode();
   };
 
   const menuItems = [
@@ -221,19 +227,33 @@ const MainLayout = ({ children }) => {
       </List>
 
       <Box sx={{ p: 2, mt: 'auto' }}>
-        <Button 
-          variant="outlined" 
-          fullWidth 
-          startIcon={<HelpIcon />}
-          sx={{ 
-            borderColor: alpha(theme.palette.primary.main, 0.5), 
-            mb: 2,
-            textTransform: 'none',
-            borderRadius: 2,
-          }}
-        >
-          帮助中心
-        </Button>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+          <Button 
+            variant="outlined" 
+            sx={{ 
+              borderColor: alpha(theme.palette.primary.main, 0.5), 
+              textTransform: 'none',
+              borderRadius: 2,
+              flex: 1,
+              mr: 1
+            }}
+            startIcon={<HelpIcon />}
+          >
+            帮助中心
+          </Button>
+          <Tooltip title={mode === 'light' ? '切换到暗色模式' : '切换到亮色模式'}>
+            <IconButton 
+              onClick={handleThemeToggle} 
+              color="primary" 
+              sx={{ 
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.5)}`,
+                borderRadius: 2,
+              }}
+            >
+              {mode === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
+            </IconButton>
+          </Tooltip>
+        </Box>
         <Button 
           variant="contained" 
           fullWidth 
@@ -298,9 +318,14 @@ const MainLayout = ({ children }) => {
             </Tooltip>
             
             {!isMobile && (
-              <Tooltip title="切换主题">
-                <IconButton color="inherit" size="large" sx={{ mr: 1 }}>
-                  <DarkModeIcon />
+              <Tooltip title={mode === 'light' ? '切换到暗色模式' : '切换到亮色模式'}>
+                <IconButton 
+                  color="inherit" 
+                  size="large" 
+                  sx={{ mr: 1 }}
+                  onClick={handleThemeToggle}
+                >
+                  {mode === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
                 </IconButton>
               </Tooltip>
             )}

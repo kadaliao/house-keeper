@@ -311,7 +311,7 @@ const LocationsPage = () => {
       // 创建API需要的数据对象，不包含image_url
       const locationData = {
         name: formData.name,
-        parent_id: formData.parent_id === 0 ? null : formData.parent_id,
+        parent_id: formData.parent_id === 0 || formData.parent_id === '' ? null : formData.parent_id,
         description: formData.description || ''
         // 注意：不要在这里添加image_url字段，后端模型中没有此字段
       };

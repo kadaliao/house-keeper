@@ -99,6 +99,8 @@ const LocationsPage = () => {
           console.warn('位置缺少ID:', loc);
           return { ...loc, id: `temp-id-${index}` };
         }
+        // 打印每个位置的图片URL，帮助调试
+        console.log(`位置 "${loc.name}" (ID: ${loc.id}) 的图片URL:`, loc.image_url);
         return loc;
       });
       
@@ -229,13 +231,13 @@ const LocationsPage = () => {
       setLoading(true);
       const locationData = {
         name: formData.name,
-        parentId: formData.parent_id === 0 ? null : formData.parent_id,
+        parent_id: formData.parent_id === 0 ? null : formData.parent_id,
         description: formData.description || '',
-        imageUrl: formData.image_url || ''
+        image_url: formData.image_url || ''
       };
       
       console.log('保存位置前的数据:', locationData);
-      console.log('保存的图片URL:', locationData.imageUrl);
+      console.log('保存的图片URL:', locationData.image_url);
 
       let response;
       if (editingLocation) {
@@ -612,7 +614,7 @@ const LocationsPage = () => {
           
           return (
             <Grid item xs={12} sm={6} md={4} key={location.id}>
-              <Card elevation={3}>
+              <Card elevation={1}>
                 <CardMedia
                   component="img"
                   height="140"
@@ -667,7 +669,7 @@ const LocationsPage = () => {
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 3 }}>
+    <Paper elevation={1} sx={{ p: 3 }}>
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           位置管理

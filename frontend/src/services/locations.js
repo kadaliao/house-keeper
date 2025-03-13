@@ -40,9 +40,17 @@ export const createLocation = async (locationData) => {
     throw new Error('位置名称不能为空');
   }
   
+  // 映射字段名称，确保与API一致
+  const apiPayload = {
+    name: locationData.name,
+    parent_id: locationData.parent_id,
+    description: locationData.description,
+    image_url: locationData.image_url
+  };
+  
   try {
-    console.log('正在创建位置:', locationData);
-    const response = await api.post('/locations', locationData);
+    console.log('正在创建位置:', apiPayload);
+    const response = await api.post('/locations', apiPayload);
     console.log('位置创建返回数据:', response.data);
     return response.data;
   } catch (error) {
@@ -60,9 +68,17 @@ export const updateLocation = async (id, locationData) => {
     throw new Error('位置名称不能为空');
   }
   
+  // 映射字段名称，确保与API一致
+  const apiPayload = {
+    name: locationData.name,
+    parent_id: locationData.parent_id,
+    description: locationData.description,
+    image_url: locationData.image_url
+  };
+  
   try {
-    console.log(`正在更新位置(ID: ${id}):`, locationData);
-    const response = await api.put(`/locations/${id}`, locationData);
+    console.log(`正在更新位置(ID: ${id}):`, apiPayload);
+    const response = await api.put(`/locations/${id}`, apiPayload);
     console.log(`位置更新返回数据(ID: ${id}):`, response.data);
     return response.data;
   } catch (error) {

@@ -49,7 +49,7 @@
 
 2. 启动开发环境
    ```
-   docker-compose up
+   docker-compose up -d
    ```
 
 3. 访问应用
@@ -58,58 +58,19 @@
    - API文档: http://localhost:8000/docs
    - 数据库管理界面: http://localhost:5050 (用户名: admin@admin.com, 密码: admin)
 
-### 本地开发（无Docker）
+### 本地开发
 
-如果您不想使用Docker，也可以在本地设置开发环境：
+如果您不想使用Docker，可以在本地设置开发环境。详细步骤请参阅 [docs/开发指南.md](docs/开发指南.md)。
 
-#### 后端设置
+### 开发助手脚本
 
-1. 创建并激活虚拟环境
-   ```
-   python -m venv venv
-   source venv/bin/activate  # Linux/Mac
-   venv\Scripts\activate  # Windows
-   ```
+项目提供了多个开发辅助脚本：
 
-2. 安装依赖
-   ```
-   cd backend
-   pip install -r requirements.txt
-   ```
+- 数据库填充脚本: `./scripts/seed_database.sh`（生成测试数据）
+- 测试运行脚本: `./scripts/run_tests.sh`（运行单元测试）
+- 前端构建脚本: `./scripts/build-frontend.sh`（优化构建前端项目）
 
-3. 设置环境变量
-   ```
-   cp .env.example .env
-   # 编辑.env文件，设置数据库连接和密钥
-   ```
-
-4. 创建数据库
-   ```
-   createdb house_keeper  # 如果使用PostgreSQL
-   ```
-
-5. 运行数据库迁移
-   ```
-   alembic upgrade head
-   ```
-
-6. 启动后端服务
-   ```
-   uvicorn app.main:app --reload
-   ```
-
-#### 前端设置
-
-1. 安装依赖
-   ```
-   cd frontend
-   npm install
-   ```
-
-2. 启动前端开发服务器
-   ```
-   npm start
-   ```
+有关这些脚本的详细用法，请参阅 [docs/开发指南.md](docs/开发指南.md)。
 
 ## 项目结构
 
@@ -138,33 +99,21 @@
 
 项目采用Docker和Docker Compose进行容器化，支持开发、测试和生产环境：
 
-### 开发环境
+### 环境配置文件
 
-- `docker-compose.yml`：用于开发环境，提供热重载和开发便利性
-- 包含服务：backend、frontend、db、pgadmin
-- 支持代码修改热重载，便于快速开发
+- `docker-compose.yml`：开发环境配置
+- `docker-compose.test.yml`：测试环境配置
+- `docker-compose.prod.yml`：生产环境配置
+- `docker-compose.build.yml`：构建环境配置
 
-### 测试环境
+有关不同环境的详细使用说明，请参阅 [docs/开发指南.md](docs/开发指南.md)。
 
-- `docker-compose.test.yml`：专用于测试环境
-- 提供隔离的测试数据库环境，避免污染开发数据
-- 运行测试指令：`docker-compose -f docker-compose.test.yml up`
+## 文档
 
-### 生产环境
-
-- `docker-compose.prod.yml`：用于生产部署
-- 优化设置：资源限制、健康检查、安全配置
-- 部署指令：`docker-compose -f docker-compose.prod.yml up -d`
-
-### 构建优化
-
-- 多阶段构建（Multi-stage builds）提高Docker镜像效率
-- 使用`.npmrc`优化前端构建性能
-- 提供了专用的构建脚本，简化构建流程
-
-## 开发路线图
-
-请参阅 [docs/开发路线图.md](docs/开发路线图.md) 了解未来开发计划。
+- [开发指南](docs/开发指南.md)：详细的开发环境设置、工作流程和最佳实践
+- [开发路线图](docs/开发路线图.md)：项目开发计划和未来功能
+- [网站目录结构](docs/网站目录结构.md)：详细的项目结构说明
+- [项目代码架构设计](docs/项目代码架构设计.md)：系统架构和设计决策
 
 ## 许可证
 

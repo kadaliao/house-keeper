@@ -21,26 +21,11 @@ ENV WDS_SOCKET_PORT=0
 CMD ["npm", "start"]
 
 # 生产环境：构建阶段
-FROM node:18-alpine as build-production
-WORKDIR /app
-
-# 复制依赖清单
-COPY package*.json ./
-
-# 安装所有依赖（包括开发依赖）
-RUN npm ci --prefer-offline --no-audit
-
-# 复制源代码
-COPY . .
-
-# 设置构建环境变量
+FROM build as build-production
 ARG REACT_APP_API_URL
 ENV REACT_APP_API_URL=${REACT_APP_API_URL}
-ENV NODE_ENV=production
+# 优化构建过程：增加内存限制并使用CI模式
 ENV NODE_OPTIONS="--max-old-space-size=4096"
-ENV PATH="/app/node_modules/.bin:${PATH}"
-
-# 执行构建
 RUN npm run build
 
 # 生产环境：运行阶段

@@ -46,6 +46,7 @@ import { format, isAfter, isBefore, addDays } from 'date-fns';
 
 import { getReminders, createReminder, updateReminder, deleteReminder } from '../../services/reminders';
 import { getItems } from '../../services/items';
+import { useReminders as useRemindersContext } from '../../contexts/ReminderContext';
 
 const RepeatTypes = {
   NONE: 'none',
@@ -76,6 +77,7 @@ const RemindersPage = () => {
     message: '',
     severity: 'success'
   });
+  const { fetchReminders: refreshGlobalReminders } = useRemindersContext();
 
   const [formData, setFormData] = useState({
     title: '',
@@ -86,26 +88,27 @@ const RemindersPage = () => {
     item_id: ''
   });
 
+  // 将fetchData函数提取到组件顶层作用域
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [remindersData, itemsData] = await Promise.all([
+        getReminders(),
+        getItems()
+      ]);
+      setReminders(remindersData);
+      setItems(itemsData);
+      setError(null);
+    } catch (err) {
+      console.error('获取数据失败:', err);
+      setError('获取数据失败，请稍后重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 获取所有提醒和物品
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [remindersData, itemsData] = await Promise.all([
-          getReminders(),
-          getItems()
-        ]);
-        setReminders(remindersData);
-        setItems(itemsData);
-        setError(null);
-      } catch (err) {
-        console.error('获取数据失败:', err);
-        setError('获取数据失败，请稍后重试');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, []);
 
@@ -221,11 +224,27 @@ const RemindersPage = () => {
       });
 
       handleCloseDialog();
+      
+      // 重置表单
+      setFormData({
+        title: '',
+        description: '',
+        due_date: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        repeat_type: RepeatTypes.NONE,
+        is_completed: false,
+        item_id: ''
+      });
+      
+      // 刷新提醒列表
+      fetchData();
+      
+      // 刷新全局提醒状态
+      refreshGlobalReminders();
     } catch (err) {
-      console.error('保存提醒失败:', err);
+      console.error('Failed to save reminder:', err);
       setSnackbar({
         open: true,
-        message: '保存提醒失败，请稍后重试',
+        message: `保存提醒失败: ${err.message}`,
         severity: 'error'
       });
     } finally {
@@ -248,11 +267,14 @@ const RemindersPage = () => {
           message: '提醒删除成功',
           severity: 'success'
         });
+        
+        // 刷新全局提醒状态
+        refreshGlobalReminders();
       } catch (err) {
-        console.error('删除提醒失败:', err);
+        console.error('Failed to delete reminder:', err);
         setSnackbar({
           open: true,
-          message: '删除提醒失败，请稍后重试',
+          message: `删除提醒失败: ${err.message}`,
           severity: 'error'
         });
       } finally {
@@ -264,31 +286,29 @@ const RemindersPage = () => {
   // 切换提醒完成状态
   const handleToggleComplete = async (reminder) => {
     try {
-      setLoading(true);
-      const updatedReminder = await updateReminder(reminder.id, {
-        ...reminder,
-        is_completed: !reminder.is_completed
-      });
+      const updatedReminder = { ...reminder, is_completed: !reminder.is_completed };
+      await updateReminder(reminder.id, updatedReminder);
       
-      // 更新提醒列表
-      setReminders(prevReminders => 
-        prevReminders.map(r => r.id === reminder.id ? updatedReminder : r)
-      );
+      // 更新本地状态
+      setReminders(reminders.map(r => 
+        r.id === reminder.id ? { ...r, is_completed: !r.is_completed } : r
+      ));
       
       setSnackbar({
         open: true,
         message: updatedReminder.is_completed ? '提醒已标记为完成' : '提醒已标记为未完成',
         severity: 'success'
       });
+      
+      // 刷新全局提醒状态
+      refreshGlobalReminders();
     } catch (err) {
-      console.error('更新提醒状态失败:', err);
+      console.error('Failed to update reminder completion status:', err);
       setSnackbar({
         open: true,
-        message: '更新提醒状态失败，请稍后重试',
+        message: `更新提醒状态失败: ${err.message}`,
         severity: 'error'
       });
-    } finally {
-      setLoading(false);
     }
   };
 

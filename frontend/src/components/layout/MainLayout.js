@@ -43,6 +43,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useReminders } from '../../contexts/ReminderContext';
 
 const drawerWidth = 260;
 
@@ -51,6 +52,7 @@ const MainLayout = ({ children }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const { currentUser, logout } = useAuth();
   const { mode, toggleColorMode } = useTheme();
+  const { getTotalCount } = useReminders();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useMuiTheme();
@@ -82,7 +84,7 @@ const MainLayout = ({ children }) => {
     { text: '仪表盘', icon: <DashboardIcon />, path: '/dashboard' },
     { text: '物品', icon: <InventoryIcon />, path: '/items' },
     { text: '位置', icon: <LocationIcon />, path: '/locations' },
-    { text: '提醒', icon: <NotificationsIcon />, path: '/reminders', notificationCount: 2 },
+    { text: '提醒', icon: <NotificationsIcon />, path: '/reminders', notificationCount: getTotalCount() },
     { text: '设置', icon: <SettingsIcon />, path: '/settings' },
   ];
 
@@ -331,8 +333,13 @@ const MainLayout = ({ children }) => {
             )}
             
             <Tooltip title="通知">
-              <IconButton color="inherit" size="large" sx={{ mr: 1 }}>
-                <Badge badgeContent={2} color="error">
+              <IconButton 
+                color="inherit" 
+                size="large" 
+                sx={{ mr: 1 }}
+                onClick={() => navigate('/reminders')}
+              >
+                <Badge badgeContent={getTotalCount()} color="error">
                   <NotificationsIcon />
                 </Badge>
               </IconButton>

@@ -1,5 +1,40 @@
 # 家庭物品管理系统开发日志
 
+## 2025-03-13 实现提醒计数显示功能
+
+### 会话目标
+实现提醒图标上显示正确的提醒数量功能，包括侧边栏和工具栏的提醒计数。
+
+### 实现功能
+- 创建了ReminderContext上下文，用于全局管理提醒状态和计数
+- 实现了获取到期和即将到期提醒的功能，支持自动刷新
+- 修复了提醒相关组件中的代码错误
+- 在侧边栏和工具栏中实现了动态提醒计数显示
+- 添加了点击工具栏通知图标导航到提醒页面的功能
+
+### 关键技术决策
+- 使用React Context API全局管理提醒状态，避免组件间的prop drilling
+- 将提醒获取服务与状态管理分离，提高代码可维护性
+- 实现定期刷新机制，确保提醒计数保持最新状态
+- 确保在提醒状态变化时更新全局计数，保持UI一致性
+
+### 问题解决方案
+- 通过创建专用的ReminderContext解决了提醒数据在不同组件间共享的问题
+- 修复了"fetchData is not defined"错误，将fetchData函数提升到组件顶层作用域
+- 替换了工具栏中硬编码的提醒计数，使用动态获取的实际提醒数量
+- 使用React的useEffect钩子实现定期刷新提醒数据
+
+### 采用技术栈
+- 前端：React, React Context API, Material-UI
+- 开发环境：Docker, Docker Compose
+
+### 涉及文件
+- 新增文件：`frontend/src/contexts/ReminderContext.js`
+- 修改文件：
+  - `frontend/src/App.js`（添加ReminderProvider）
+  - `frontend/src/components/layout/MainLayout.js`（更新提醒计数显示）
+  - `frontend/src/pages/reminders/RemindersPage.js`（修复fetchData问题，集成ReminderContext）
+
 ## 2025-03-10 项目初始化
 
 ### 会话目标
@@ -706,102 +741,34 @@
 - `.github/workflows/test.yml`
 - `.github/workflows/deploy.yml`
 
-## 2025-03-13 数据库填充脚本改进
+## 2025-03-13 仪表盘热门位置显示真实数据
 
 ### 会话目标
-改进数据库填充脚本，使其能够灵活匹配Docker容器名称，增强脚本使用的灵活性和健壮性。
+实现仪表盘上热门位置显示真实数据的功能。
 
 ### 实现功能
-- 修改了数据库填充脚本，实现自动检测后端容器
-- 使用部分匹配方式查找包含"house-keeper-backend"的容器
-- 显示实际使用的容器名称，提高脚本透明度
-- 更新了开发文档，反映脚本的新功能
+1. 优化了热门位置数据获取的后端实现，使用SQL聚合查询提高效率。
+2. 添加了新的API端点`/stats/popular-locations`专门用于获取热门位置数据。
+3. 改进了前端仪表盘热门位置组件，添加了空数据状态的处理。
+4. 添加了点击热门位置条目可以导航到对应位置详情页的功能。
+5. 在位置管理页面添加了处理URL参数的逻辑，支持直接跳转到特定位置。
 
 ### 关键技术决策
-- 使用`grep`和`awk`组合来查找并提取容器名称
-- 使用变量存储容器名称，增强脚本的灵活性
-- 添加容器名称显示，便于调试和确认
-- 保持向后兼容，不改变脚本的整体结构和参数
+1. 使用SQL聚合查询而非内存计算，优化了获取热门位置数据的性能。
+2. 在位置统计数据中增加ID字段，便于前端实现导航功能。
+3. 为了提供更好的用户体验，添加了空数据状态的处理，并提供了快捷导航按钮。
 
 ### 问题解决方案
-- 通过部分匹配解决了容器名称可能变化的问题
-- 通过自动检测提高了脚本的通用性和健壮性
-- 保留了脚本的核心功能和使用方式，确保用户体验一致性
+1. 通过SQL JOIN和聚合函数解决了高效统计位置物品数的问题。
+2. 通过在热门位置组件中增加条件渲染解决了空数据状态的显示问题。
+3. 通过URL参数传递和处理，实现了从仪表盘到位置详情页的导航功能。
 
 ### 采用技术栈
-- Bash脚本
-- Docker命令行工具
-- Shell文本处理工具(grep, awk)
+- 后端：FastAPI, SQLAlchemy
+- 前端：React, Material UI, Recharts
 
 ### 涉及文件
-- `scripts/seed_database.sh`：数据库填充脚本
-- `docs/开发指南.md`：开发文档更新
-
-## 2025-03-15 实现夜间模式切换功能
-
-### 会话目标
-实现工具栏上的夜间模式切换功能，允许用户在亮色和暗色主题之间切换。
-
-### 实现功能
-- 创建了主题上下文（ThemeContext）用于管理应用的主题模式
-- 实现了动态主题切换功能，支持亮色/暗色模式
-- 在工具栏和侧边栏中添加了主题切换按钮
-- 使用localStorage保存用户的主题偏好
-
-### 关键技术决策
-- 使用React Context API管理全局主题状态
-- 使用localStorage存储用户主题偏好，保证页面刷新后保持一致
-- 基于Material UI的主题系统实现完整的暗色模式
-- 同时在工具栏和侧边栏添加主题切换按钮，提高用户访问性
-
-### 问题解决方案
-- 通过修改Material UI的createTheme函数参数，实现了动态主题切换
-- 使用useMemo优化主题创建过程，避免不必要的重新渲染
-- 通过重命名ThemeProvider解决命名冲突问题
-
-### 采用技术栈
-- 前端：React, React Context API, Material UI
-- 状态管理：React hooks (useState, useEffect, useContext)
-- 存储：localStorage
-- 容器化：Docker, Docker Compose
-
-### 涉及文件
-- 新增：frontend/src/contexts/ThemeContext.js
-- 修改：frontend/src/App.js
-- 修改：frontend/src/components/layout/MainLayout.js
-
-## 2025-03-16 个人资料管理功能实现
-
-### 会话目标
-开发用户个人资料管理功能，允许用户查看和编辑个人信息。
-
-### 实现功能
-- 创建美观的个人资料页面，展示用户基本信息
-- 实现了用户资料编辑功能，包括基本信息（姓名、邮箱）和密码修改
-- 设计了选项卡式界面，将不同类型的编辑操作分组
-- 添加表单验证，确保用户输入的数据合法有效
-- 实现操作反馈，提供加载状态和操作结果提示
-
-### 关键技术决策
-- 使用React状态管理用户表单数据和交互状态
-- 实现选项卡式界面分离不同类型的设置（基本信息/密码修改）
-- 为页面添加明确的编辑/保存/取消操作流程
-- 使用Material UI组件构建现代化UI界面
-- 表单验证确保数据完整性和安全性
-
-### 问题解决方案
-- 使用选项卡界面解决了多种编辑功能在单一页面展示的问题
-- 通过编辑模式状态控制表单的禁用/启用状态
-- 使用表单验证防止无效数据提交到后端
-- 通过后端API错误处理，提供友好的错误反馈
-- 密码修改时实施确认密码验证，提高安全性
-
-### 采用技术栈
-- 前端：React, React Hooks, Material UI
-- 状态管理：React useState, useEffect
-- 数据验证：客户端表单验证
-- API调用：Axios
-
-### 涉及文件
-- frontend/src/pages/profile/ProfilePage.js (主要实现)
-- frontend/src/services/auth.js (API调用)
+1. `backend/app/api/endpoints/stats.py` - 后端统计API实现。
+2. `frontend/src/services/stats.js` - 前端统计服务。
+3. `frontend/src/pages/dashboard/DashboardPage.js` - 仪表盘页面组件。
+4. `frontend/src/pages/locations/LocationsPage.js` - 位置管理页面组件。

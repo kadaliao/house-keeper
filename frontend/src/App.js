@@ -11,6 +11,7 @@ import zhLocale from 'date-fns/locale/zh-CN';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { useTheme } from './contexts/ThemeContext';
+import { ReminderProvider } from './contexts/ReminderContext';
 
 // Layouts
 import MainLayout from './components/layout/MainLayout';
@@ -246,76 +247,78 @@ function AppContent() {
       <CssBaseline />
       <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={zhLocale}>
         <AuthProvider>
-          <Router>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              
-              <Route 
-                path="/dashboard" 
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <DashboardPage />
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route 
-                path="/items" 
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <ItemsPage />
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route 
-                path="/locations" 
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <LocationsPage />
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route 
-                path="/reminders" 
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <RemindersPage />
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route 
-                path="/settings" 
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <SettingsPage />
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route 
-                path="/profile" 
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <ProfilePage />
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-              
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </Router>
+          <ReminderProvider>
+            <Router>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                
+                <Route 
+                  path="/dashboard" 
+                  element={
+                    <ProtectedRoute>
+                      <MainLayout>
+                        <DashboardPage />
+                      </MainLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route 
+                  path="/items" 
+                  element={
+                    <ProtectedRoute>
+                      <MainLayout>
+                        <ItemsPage />
+                      </MainLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route 
+                  path="/locations" 
+                  element={
+                    <ProtectedRoute>
+                      <MainLayout>
+                        <LocationsPage />
+                      </MainLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route 
+                  path="/reminders" 
+                  element={
+                    <ProtectedRoute>
+                      <MainLayout>
+                        <RemindersPage />
+                      </MainLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route 
+                  path="/settings" 
+                  element={
+                    <ProtectedRoute>
+                      <MainLayout>
+                        <SettingsPage />
+                      </MainLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route 
+                  path="/profile" 
+                  element={
+                    <ProtectedRoute>
+                      <MainLayout>
+                        <ProfilePage />
+                      </MainLayout>
+                    </ProtectedRoute>
+                  }
+                />
+                
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </Router>
+          </ReminderProvider>
         </AuthProvider>
       </LocalizationProvider>
     </MuiThemeProvider>

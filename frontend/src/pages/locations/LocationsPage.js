@@ -332,7 +332,7 @@ const LocationsPage = () => {
                 const imageUrlMap = {};
                 
                 // 从当前状态中收集图片URL
-                prevLocations.forEach(loc => {
+                locations.forEach(loc => {
                   if (loc.image_url) {
                     imageUrlMap[loc.id] = loc.image_url;
                   }

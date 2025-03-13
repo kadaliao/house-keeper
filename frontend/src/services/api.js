@@ -37,6 +37,7 @@ api.interceptors.response.use(
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
+    // 传递所有错误，让调用方处理特定状态码
     return Promise.reject(error);
   }
 );

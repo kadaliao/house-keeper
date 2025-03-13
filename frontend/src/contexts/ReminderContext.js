@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getDueReminders, getUpcomingReminders } from '../services/reminders';
+import { isAuthenticated } from '../services/auth';
 
 // 创建上下文
 const ReminderContext = createContext();
@@ -18,6 +19,15 @@ export function ReminderProvider({ children }) {
 
   // 获取提醒数据
   const fetchReminders = async () => {
+    // 检查用户是否已认证，未认证时不获取数据
+    if (!isAuthenticated()) {
+      console.log('用户未认证，跳过获取提醒数据');
+      setDueReminders([]);
+      setUpcomingReminders([]);
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       const [dueData, upcomingData] = await Promise.all([
@@ -30,21 +40,60 @@ export function ReminderProvider({ children }) {
       setError(null);
     } catch (err) {
       console.error('Failed to fetch reminders:', err);
-      setError('获取提醒数据失败');
+      
+      // 检查是否是401错误（未认证）
+      if (err.response && err.response.status === 401) {
+        console.log('用户认证已过期，清空提醒数据');
+        setDueReminders([]);
+        setUpcomingReminders([]);
+      } else {
+        setError('获取提醒数据失败');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // 初始化时加载数据
+  // 监听认证状态变化和初始化时加载数据
   useEffect(() => {
+    // 当组件挂载或认证状态变化时获取数据
     fetchReminders();
     
     // 设置定期刷新（每小时刷新一次）
-    const intervalId = setInterval(fetchReminders, 60 * 60 * 1000);
+    const intervalId = setInterval(() => {
+      // 每次刷新前检查认证状态
+      if (isAuthenticated()) {
+        fetchReminders();
+      }
+    }, 60 * 60 * 1000);
+    
+    // 监听存储事件，用于检测登出操作
+    const handleStorageChange = (e) => {
+      if (e.key === 'token' && !e.newValue) {
+        // token被移除，用户已登出
+        console.log('检测到用户登出（storage事件），清空提醒数据');
+        setDueReminders([]);
+        setUpcomingReminders([]);
+      }
+    };
+    
+    // 监听自定义登出事件
+    const handleLogout = () => {
+      console.log('检测到用户登出（自定义事件），清空提醒数据');
+      setDueReminders([]);
+      setUpcomingReminders([]);
+      setLoading(false);
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('user-logout', handleLogout);
     
     // 清理函数
-    return () => clearInterval(intervalId);
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('user-logout', handleLogout);
+    };
   }, []);
 
   // 获取总提醒数（到期+即将到期）

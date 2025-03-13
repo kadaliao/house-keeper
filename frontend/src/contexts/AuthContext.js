@@ -56,6 +56,13 @@ export const AuthProvider = ({ children }) => {
     console.log('执行登出操作...');
     logoutApi();
     setCurrentUser(null);
+    setError(null);
+    setLoading(false);
+    
+    const logoutEvent = new CustomEvent('user-logout');
+    window.dispatchEvent(logoutEvent);
+    
+    console.log('登出完成，用户状态已清除');
   };
 
   const value = {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   Container, 
   Typography, 
@@ -12,7 +12,7 @@ import {
   alpha,
   Stack
 } from '@mui/material';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Home as HomeIcon, 
   Inventory, 
@@ -20,6 +20,7 @@ import {
   Notifications, 
   Security
 } from '@mui/icons-material';
+import { useAuth } from '../contexts/AuthContext';
 
 const FeatureCard = ({ icon, title, description }) => {
   const theme = useTheme();
@@ -64,6 +65,20 @@ const FeatureCard = ({ icon, title, description }) => {
 
 const Home = () => {
   const theme = useTheme();
+  const { isAuthenticated, loading } = useAuth();
+  const navigate = useNavigate();
+  
+  // 如果用户已登录，重定向到仪表盘
+  useEffect(() => {
+    if (isAuthenticated && !loading) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, loading, navigate]);
+  
+  // 如果正在加载身份验证状态，不渲染任何内容，避免闪烁
+  if (loading) {
+    return null;
+  }
   
   const features = [
     {

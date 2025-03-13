@@ -121,7 +121,57 @@ const LocationsPage = () => {
   // 组件挂载时获取位置数据
   useEffect(() => {
     console.log('LocationsPage组件挂载，开始获取位置数据');
-    fetchLocations();
+    
+    // 函数：从本地存储中获取图片URL
+    const getStoredImageUrls = () => {
+      try {
+        const imageUrlsJson = localStorage.getItem('locationImageUrls');
+        if (imageUrlsJson) {
+          return JSON.parse(imageUrlsJson);
+        }
+      } catch (error) {
+        console.error('解析本地存储的图片URL失败:', error);
+      }
+      return {};
+    };
+    
+    // 获取位置列表并合并图片URL
+    const fetchAndMergeImageUrls = async () => {
+      try {
+        setLoading(true);
+        
+        // 获取位置列表
+        const locationsData = await getLocations();
+        console.log('获取到的位置列表数据:', locationsData);
+        
+        // 获取存储的图片URL
+        const storedImageUrls = getStoredImageUrls();
+        console.log('从本地存储获取的图片URL:', storedImageUrls);
+        
+        // 合并图片URL到位置数据
+        const processedData = locationsData.map((loc) => {
+          // 如果位置ID存在于存储的图片URL中，则添加image_url
+          if (storedImageUrls[loc.id]) {
+            return { ...loc, image_url: storedImageUrls[loc.id] };
+          }
+          return loc;
+        });
+        
+        console.log('合并图片URL后的位置数据:', processedData);
+        setLocations(processedData);
+      } catch (error) {
+        console.error('获取位置列表失败:', error);
+        setSnackbar({
+          open: true,
+          message: '获取位置列表失败，请刷新页面重试',
+          severity: 'error'
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchAndMergeImageUrls();
   }, []);
 
   useEffect(() => {
@@ -227,6 +277,17 @@ const LocationsPage = () => {
       setIsSaving(true);
       setError(null);
       
+      if (!formData.name) {
+        setSnackbar({
+          open: true,
+          message: '位置名称不能为空',
+          severity: 'error'
+        });
+        setError('位置名称不能为空');
+        setIsSaving(false);
+        return;
+      }
+      
       console.log('准备保存位置信息:', formData);
       
       // 创建API需要的数据对象，不包含image_url
@@ -262,6 +323,33 @@ const LocationsPage = () => {
             )
           );
           
+          // 将更新后的数据存储到本地存储中，确保页面刷新后仍能获取图片URL
+          setTimeout(() => {
+            try {
+              // 获取最新的位置列表
+              getLocations().then(freshLocations => {
+                // 创建一个map存储图片URL
+                const imageUrlMap = {};
+                
+                // 从当前状态中收集图片URL
+                prevLocations.forEach(loc => {
+                  if (loc.image_url) {
+                    imageUrlMap[loc.id] = loc.image_url;
+                  }
+                });
+                
+                // 更新当前编辑的位置
+                imageUrlMap[editingLocation.id] = imageUrl;
+                
+                // 保存到本地存储
+                localStorage.setItem('locationImageUrls', JSON.stringify(imageUrlMap));
+                console.log('图片URL已保存到本地存储:', imageUrlMap);
+              });
+            } catch (e) {
+              console.error('保存图片URL到本地存储失败:', e);
+            }
+          }, 500);
+          
           console.log('前端数据更新完成，包含图片URL');
         }
       } else {
@@ -277,6 +365,23 @@ const LocationsPage = () => {
           
           // 更新位置列表
           setLocations(prevLocations => [...prevLocations, newLocation]);
+          
+          // 将新位置的图片URL保存到本地存储
+          setTimeout(() => {
+            try {
+              // 从本地存储获取现有图片URL
+              const storedUrls = JSON.parse(localStorage.getItem('locationImageUrls') || '{}');
+              
+              // 添加新位置的图片URL
+              if (imageUrl) {
+                storedUrls[response.id] = imageUrl;
+                localStorage.setItem('locationImageUrls', JSON.stringify(storedUrls));
+                console.log('新位置图片URL已保存到本地存储:', storedUrls);
+              }
+            } catch (e) {
+              console.error('保存图片URL到本地存储失败:', e);
+            }
+          }, 500);
           
           console.log('新位置已添加到列表，包含图片URL:', newLocation);
         }
@@ -668,26 +773,11 @@ const LocationsPage = () => {
                   alt={location.name}
                   onError={(e) => {
                     console.error('图片加载失败:', displayImageUrl);
-                    // 使用背景色替代图片
-                    e.target.style.backgroundColor = '#f0f0f0';
-                    e.target.style.display = 'flex';
-                    e.target.style.alignItems = 'center';
-                    e.target.style.justifyContent = 'center';
-                    
-                    // 创建文本节点显示位置名称首字母
-                    const text = document.createTextNode(location.name.charAt(0).toUpperCase());
-                    e.target.innerHTML = '';
-                    
-                    // 创建span元素包含文本
-                    const span = document.createElement('span');
-                    span.style.fontSize = '3rem';
-                    span.style.color = '#999';
-                    span.appendChild(text);
-                    
-                    e.target.appendChild(span);
+                    // 使用静态占位图
+                    e.target.src = 'https://via.placeholder.com/400x140?text=' + encodeURIComponent(location.name);
                     e.target.onerror = null; // 防止无限循环
                   }}
-                  sx={{ objectFit: 'contain', bgcolor: '#f5f5f5' }}
+                  sx={{ objectFit: 'cover', bgcolor: '#f5f5f5' }}
                 />
                 <CardContent>
                   <Typography gutterBottom variant="h6" component="div">
@@ -874,22 +964,8 @@ const LocationsPage = () => {
                       }} 
                       onError={(e) => {
                         console.error('预览图片加载失败:', imagePreview || formData.image_url);
-                        // 使用背景色替代图片
-                        e.target.style.backgroundColor = '#f0f0f0';
-                        e.target.style.display = 'flex';
-                        e.target.style.alignItems = 'center';
-                        e.target.style.justifyContent = 'center';
-                        e.target.style.height = '200px';
-                        
-                        const text = document.createTextNode('图片无法加载');
-                        e.target.innerHTML = '';
-                        
-                        const span = document.createElement('span');
-                        span.style.fontSize = '1rem';
-                        span.style.color = '#999';
-                        span.appendChild(text);
-                        
-                        e.target.appendChild(span);
+                        // 使用占位图
+                        e.target.src = 'https://via.placeholder.com/400x200?text=' + encodeURIComponent('图片加载失败');
                         e.target.onerror = null; // 防止无限循环
                       }}
                     />

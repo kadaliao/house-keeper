@@ -28,7 +28,11 @@ import {
   CardMedia,
   OutlinedInput,
   Checkbox,
-  ListItemText
+  ListItemText,
+  Popover,
+  List,
+  ListItem,
+  ListItemIcon
 } from '@mui/material';
 import { 
   Add as AddIcon, 
@@ -37,10 +41,12 @@ import {
   Search as SearchIcon,
   Category as CategoryIcon,
   LocationOn as LocationIcon,
-  Upload as UploadIcon
+  Upload as UploadIcon,
+  FilterList as FilterListIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { format } from 'date-fns';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { getItems, createItem, updateItem, deleteItem, searchItems } from '../../services/items';
 import { getLocations } from '../../services/locations';
@@ -55,6 +61,8 @@ const ItemsPage = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategories, setSelectedCategories] = useState([]);
+  const [categoryAnchorEl, setCategoryAnchorEl] = useState(null);
+  const [allCategories, setAllCategories] = useState([]);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -77,6 +85,10 @@ const ItemsPage = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
 
+  // 用于处理URL参数
+  const location = useLocation();
+  const navigate = useNavigate();
+
   // 获取所有物品和位置
   const fetchData = async () => {
     try {
@@ -87,6 +99,11 @@ const ItemsPage = () => {
       ]);
       setItems(itemsData);
       setLocations(locationsData);
+      
+      // 提取并存储所有可用的类别
+      const categories = [...new Set(itemsData.map(item => item.category).filter(Boolean))];
+      setAllCategories(categories);
+      
       setError(null);
     } catch (err) {
       console.error('获取数据失败:', err);
@@ -99,7 +116,44 @@ const ItemsPage = () => {
   // 首次加载时获取数据
   useEffect(() => {
     fetchData();
-  }, []);
+    
+    // 检查URL中是否有edit参数
+    const queryParams = new URLSearchParams(location.search);
+    const editItemId = queryParams.get('edit');
+    
+    if (editItemId) {
+      // 等待数据加载完成后打开编辑对话框
+      const loadAndOpenEditor = async () => {
+        try {
+          // 确保物品数据已加载
+          if (items.length === 0) {
+            await fetchData();
+          }
+          
+          // 查找要编辑的物品
+          const itemToEdit = items.find(item => item.id === parseInt(editItemId));
+          
+          if (itemToEdit) {
+            handleOpenEditDialog(itemToEdit);
+            // 清除URL参数，避免刷新页面时重复打开对话框
+            navigate('/items', { replace: true });
+          } else {
+            // 如果找不到物品，显示错误消息
+            setSnackbar({
+              open: true,
+              message: `未找到ID为${editItemId}的物品`,
+              severity: 'error'
+            });
+            navigate('/items', { replace: true });
+          }
+        } catch (err) {
+          console.error('加载编辑物品失败:', err);
+        }
+      };
+      
+      loadAndOpenEditor();
+    }
+  }, [location.search, items.length]); // 当URL参数或物品列表变化时重新执行
 
   // 查询过滤
   useEffect(() => {
@@ -112,13 +166,15 @@ const ItemsPage = () => {
           params.search = searchQuery;
         }
         
-        if (selectedCategories.length > 0) {
+        if (selectedCategories && selectedCategories.length > 0) {
           // 使用新的 categories 参数，传递逗号分隔的类别列表
           params.categories = selectedCategories.join(',');
         }
         
         const filteredItems = await searchItems(params);
         setItems(filteredItems);
+        
+        // 注意: 不要在这里更新allCategories，我们希望保留完整的类别列表
       } catch (err) {
         console.error('搜索物品失败:', err);
         setError('搜索物品失败，请稍后重试');
@@ -127,17 +183,16 @@ const ItemsPage = () => {
       }
     };
     
-    if (searchQuery || selectedCategories.length > 0) {
+    if (searchQuery || (selectedCategories && selectedCategories.length > 0)) {
       fetchFilteredItems();
     } else {
       fetchData();
     }
   }, [searchQuery, selectedCategories]);
 
-  // 获取所有类别
+  // 获取所有类别 - 这个函数现在可以直接返回allCategories
   const getCategories = () => {
-    const categories = [...new Set(items.map(item => item.category).filter(Boolean))];
-    return categories;
+    return allCategories;
   };
 
   // 处理表单输入变化
@@ -309,16 +364,33 @@ const ItemsPage = () => {
     setSearchQuery(e.target.value);
   };
 
-  // 处理类别筛选
-  const handleCategoryChange = (event) => {
-    const {
-      target: { value },
-    } = event;
-    setSelectedCategories(
-      // On autofill we get a stringified value.
-      typeof value === 'string' ? value.split(',') : value,
-    );
+  // 处理类别筛选器菜单打开
+  const handleCategoryFilterClick = (event) => {
+    setCategoryAnchorEl(event.currentTarget);
   };
+
+  // 处理类别筛选器菜单关闭
+  const handleCategoryFilterClose = () => {
+    setCategoryAnchorEl(null);
+  };
+
+  // 处理类别选择
+  const handleCategoryToggle = (category) => {
+    const currentIndex = selectedCategories.indexOf(category);
+    const newSelectedCategories = [...selectedCategories];
+
+    if (currentIndex === -1) {
+      newSelectedCategories.push(category);
+    } else {
+      newSelectedCategories.splice(currentIndex, 1);
+    }
+
+    setSelectedCategories(newSelectedCategories);
+  };
+
+  // 检查类别筛选器是否打开
+  const isCategoryFilterOpen = Boolean(categoryAnchorEl);
+  const categoryFilterId = isCategoryFilterOpen ? 'category-filter-popover' : undefined;
 
   // 关闭提示框
   const handleCloseSnackbar = () => {
@@ -456,36 +528,113 @@ const ItemsPage = () => {
           }}
         />
         
-        <FormControl sx={{ minWidth: 200 }} size="small">
-          <InputLabel id="category-multiple-checkbox-label">按类别筛选</InputLabel>
-          <Select
-            labelId="category-multiple-checkbox-label"
-            id="category-multiple-checkbox"
-            multiple
-            value={selectedCategories}
-            onChange={handleCategoryChange}
-            input={<OutlinedInput label="按类别筛选" />}
-            renderValue={(selected) => selected.join(', ')}
-          >
-            {getCategories().map((category) => (
-              <MenuItem key={category} value={category}>
-                <Checkbox checked={selectedCategories.indexOf(category) > -1} />
-                <ListItemText primary={category} />
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        
+        {/* 清除所有筛选 */}
         {(searchQuery || selectedCategories.length > 0) && (
           <Button 
             variant="outlined"
+            size="small"
             onClick={() => {
               setSearchQuery('');
               setSelectedCategories([]);
             }}
           >
-            清除筛选
+            清除所有筛选
           </Button>
+        )}
+        
+        {/* 自定义类别筛选器 */}
+        <Box>
+          <Button
+            variant="outlined"
+            startIcon={<FilterListIcon />}
+            onClick={handleCategoryFilterClick}
+            aria-describedby={categoryFilterId}
+            color={selectedCategories.length > 0 ? "primary" : "inherit"}
+            size="small"
+          >
+            按类别筛选 {selectedCategories.length > 0 && `(${selectedCategories.length})`}
+          </Button>
+          <Popover
+            id={categoryFilterId}
+            open={isCategoryFilterOpen}
+            anchorEl={categoryAnchorEl}
+            onClose={handleCategoryFilterClose}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'left',
+            }}
+          >
+            <Paper sx={{ width: 250, maxHeight: 300, overflow: 'auto' }}>
+              {allCategories.length === 0 ? (
+                <Box sx={{ p: 2, textAlign: 'center' }}>
+                  <Typography variant="body2" color="textSecondary">
+                    暂无类别数据
+                  </Typography>
+                </Box>
+              ) : (
+                <List dense sx={{ pt: 0, pb: 0 }}>
+                  {allCategories.map((category) => (
+                    <ListItem
+                      key={category}
+                      dense
+                      button
+                      onClick={() => handleCategoryToggle(category)}
+                    >
+                      <ListItemIcon sx={{ minWidth: 36 }}>
+                        <Checkbox
+                          edge="start"
+                          checked={selectedCategories.indexOf(category) !== -1}
+                          tabIndex={-1}
+                          disableRipple
+                          size="small"
+                        />
+                      </ListItemIcon>
+                      <ListItemText primary={category} />
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+              <Divider />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 1 }}>
+                <Button 
+                  size="small" 
+                  onClick={() => setSelectedCategories([])}
+                  disabled={selectedCategories.length === 0}
+                >
+                  清除
+                </Button>
+                <Button 
+                  size="small" 
+                  onClick={handleCategoryFilterClose}
+                  color="primary"
+                >
+                  确定
+                </Button>
+              </Box>
+            </Paper>
+          </Popover>
+        </Box>
+        
+        {/* 选中的类别标签展示 */}
+        {selectedCategories.length > 0 && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {selectedCategories.map((category) => (
+              <Chip
+                key={category}
+                label={category}
+                size="small"
+                onDelete={() => {
+                  setSelectedCategories(selectedCategories.filter((cat) => cat !== category));
+                }}
+              />
+            ))}
+            <Chip
+              label="清除全部"
+              size="small"
+              variant="outlined"
+              onClick={() => setSelectedCategories([])}
+            />
+          </Box>
         )}
       </Box>
 

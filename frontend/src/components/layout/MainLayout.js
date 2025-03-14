@@ -97,11 +97,13 @@ const MainLayout = ({ children }) => {
 
     setSearchLoading(true);
     try {
+      // 获取所有位置数据，以便正确显示物品位置信息
+      const allLocations = await getLocations();
+      
       // 搜索物品
       const items = await searchItems({ search: query });
       
       // 搜索位置 (简单过滤)
-      const allLocations = await getLocations();
       const locations = allLocations.filter(loc => 
         loc.name.toLowerCase().includes(query.toLowerCase()) || 
         (loc.description && loc.description.toLowerCase().includes(query.toLowerCase()))
@@ -109,7 +111,7 @@ const MainLayout = ({ children }) => {
       
       setSearchResults({
         items,
-        locations
+        locations: allLocations // 存储所有位置以便正确显示物品位置信息
       });
     } catch (error) {
       console.error('搜索失败:', error);
@@ -168,7 +170,7 @@ const MainLayout = ({ children }) => {
   };
 
   const handleSearchItemClick = (item) => {
-    navigate(`/items/${item.id}`);
+    navigate(`/items?edit=${item.id}`); // 修改为跳转到物品编辑页面
     handleCloseSearchDialog();
   };
 

@@ -49,12 +49,13 @@ import { format } from 'date-fns';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { getItems, createItem, updateItem, deleteItem, searchItems, getItem } from '../../services/items';
-import { getLocations } from '../../services/locations';
+import { getLocations, getLocationTree } from '../../services/locations';
 import { uploadImage } from '../../services/uploads';
 
 const ItemsPage = () => {
   const [items, setItems] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [locationTree, setLocationTree] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
@@ -91,16 +92,34 @@ const ItemsPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // 定义局部加载状态
+  const [isFiltering, setIsFiltering] = useState(false);
+  
+  // 从URL参数获取location_id
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const locationId = queryParams.get('location_id');
+    
+    if (locationId) {
+      setSelectedLocation(Number(locationId));
+    }
+  }, [location.search]);
+
   // 获取所有物品和位置
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [itemsData, locationsData] = await Promise.all([
+      const [itemsData, locationsData, locationTreeData] = await Promise.all([
         getItems(),
-        getLocations()
+        getLocations(),
+        getLocationTree()
       ]);
+      
+      console.log('获取到的位置树数据:', locationTreeData); // 添加调试日志
+      
       setItems(itemsData);
       setLocations(locationsData);
+      setLocationTree(locationTreeData);
       
       // 提取并存储所有可用的类别
       const categories = [...new Set(itemsData.map(item => item.category).filter(Boolean))];
@@ -124,52 +143,37 @@ const ItemsPage = () => {
     const editItemId = queryParams.get('edit');
     
     if (editItemId) {
-      // 等待数据加载完成后打开编辑对话框
+      // 直接通过API获取物品，不依赖当前列表
       const loadAndOpenEditor = async () => {
         try {
-          // 确保物品数据已加载
-          if (items.length === 0) {
-            await fetchData();
-          }
-          
-          // 尝试直接通过API获取物品，而不是从当前列表中查找
           const itemId = parseInt(editItemId);
-          try {
-            const itemToEdit = await getItem(itemId);
-            handleOpenEditDialog(itemToEdit);
-            // 清除URL参数，避免刷新页面时重复打开对话框
-            navigate('/items', { replace: true });
-          } catch (itemError) {
-            console.error('获取物品详情失败:', itemError);
-            // 如果直接获取失败，尝试从列表中查找
-            const existingItem = items.find(item => item.id === itemId);
-            if (existingItem) {
-              handleOpenEditDialog(existingItem);
-              navigate('/items', { replace: true });
-            } else {
-              // 如果仍找不到物品，显示错误消息
-              setSnackbar({
-                open: true,
-                message: `未找到ID为${editItemId}的物品`,
-                severity: 'error'
-              });
-              navigate('/items', { replace: true });
-            }
-          }
+          const itemToEdit = await getItem(itemId);
+          handleOpenEditDialog(itemToEdit);
+          // 清除URL参数，避免刷新页面时重复打开对话框
+          navigate('/items', { replace: true });
         } catch (err) {
-          console.error('加载编辑物品失败:', err);
+          console.error('获取物品详情失败:', err);
+          setSnackbar({
+            open: true,
+            message: `未找到ID为${editItemId}的物品`,
+            severity: 'error'
+          });
+          navigate('/items', { replace: true });
         }
       };
       
       loadAndOpenEditor();
     }
-  }, [location.search, items.length]);
+  }, [location.search]); // 移除items.length依赖
 
   // 查询过滤
   useEffect(() => {
+    console.log('筛选条件变化 - 搜索:', searchQuery, '类别:', selectedCategories, '位置:', selectedLocation);
+    
     const fetchFilteredItems = async () => {
       try {
-        setLoading(true);
+        // 使用局部加载状态，不影响整个页面
+        setIsFiltering(true);
         let params = {};
         
         if (searchQuery) {
@@ -186,24 +190,40 @@ const ItemsPage = () => {
           params.location_id = Number(selectedLocation);
         }
         
-        console.log('筛选参数:', params); // 添加调试日志
+        console.log('发送筛选请求，参数:', params); // 添加调试日志
         
+        // 获取后端筛选结果
         const filteredItems = await searchItems(params);
-        setItems(filteredItems);
+        console.log('筛选结果:', filteredItems); // 添加调试日志
+        
+        // 如果后端API未正确处理交集，我们在前端再次筛选确保结果正确
+        let finalFilteredItems = [...filteredItems];
+        
+        // 如果后端未正确处理筛选条件的交集，在前端进行二次筛选
+        // 这是一个防御性编程措施
+        if (selectedCategories.length > 0 && selectedLocation) {
+          finalFilteredItems = filteredItems.filter(item => {
+            const matchesCategory = selectedCategories.includes(item.category);
+            const matchesLocation = Number(item.location_id) === Number(selectedLocation);
+            return matchesCategory && matchesLocation;
+          });
+          console.log('前端二次筛选后的结果:', finalFilteredItems);
+        }
+        
+        setItems(finalFilteredItems);
         
         // 注意: 不要在这里更新allCategories，我们希望保留完整的类别列表
       } catch (err) {
         console.error('搜索物品失败:', err);
         setError('搜索物品失败，请稍后重试');
       } finally {
-        setLoading(false);
+        setIsFiltering(false);
       }
     };
-    
-    if (searchQuery || (selectedCategories && selectedCategories.length > 0) || (selectedLocation && selectedLocation !== '')) {
+
+    // 只有在页面已加载完成后才执行筛选
+    if (!loading) {
       fetchFilteredItems();
-    } else {
-      fetchData();
     }
   }, [searchQuery, selectedCategories, selectedLocation]);
 
@@ -381,6 +401,12 @@ const ItemsPage = () => {
     setSearchQuery(e.target.value);
   };
 
+  // 处理搜索表单提交
+  const handleSearchSubmit = (e) => {
+    e.preventDefault(); // 防止表单提交刷新页面
+    // 搜索功能已通过useEffect自动触发
+  };
+
   // 处理类别筛选器菜单打开
   const handleCategoryFilterClick = (event) => {
     setCategoryAnchorEl(event.currentTarget);
@@ -415,9 +441,44 @@ const ItemsPage = () => {
     setLocationAnchorEl(null);
   };
 
+  // 渲染位置树结构
+  const renderLocationTree = (locationItems, level = 0) => {
+    return locationItems.map((location) => (
+      <React.Fragment key={location.id}>
+        <ListItem
+          dense
+          button
+          onClick={() => handleLocationSelect(location.id)}
+          selected={Number(selectedLocation) === location.id}
+          sx={{ pl: 2 + level * 2 }} // 根据层级增加缩进
+        >
+          <ListItemIcon sx={{ minWidth: 36 }}>
+            <Checkbox
+              edge="start"
+              checked={Number(selectedLocation) === location.id}
+              tabIndex={-1}
+              disableRipple
+              size="small"
+            />
+          </ListItemIcon>
+          <ListItemText 
+            primary={location.name}
+            primaryTypographyProps={{ 
+              style: { 
+                fontWeight: level === 0 ? 'bold' : 'normal',
+                fontSize: level === 0 ? '0.9rem' : '0.85rem'
+              } 
+            }}
+          />
+        </ListItem>
+        {location.children && location.children.length > 0 && renderLocationTree(location.children, level + 1)}
+      </React.Fragment>
+    ));
+  };
+
   // 处理位置选择
   const handleLocationSelect = (locationId) => {
-    // 确保数字类型的locationId
+    // 确保数字类型的locationId，或者空字符串重置筛选
     setSelectedLocation(locationId === '' ? '' : Number(locationId));
     handleLocationFilterClose();
   };
@@ -440,8 +501,21 @@ const ItemsPage = () => {
 
   // 获取位置名称
   const getLocationName = (locationId) => {
-    const location = locations.find(loc => loc.id === locationId);
-    return location ? location.name : '未指定';
+    if (!locationId) return '';
+    
+    // 递归搜索位置树
+    const findLocationName = (locations, id) => {
+      for (const loc of locations) {
+        if (loc.id === id) return loc.name;
+        if (loc.children && loc.children.length) {
+          const name = findLocationName(loc.children, id);
+          if (name) return name;
+        }
+      }
+      return '';
+    };
+    
+    return findLocationName(locationTree, locationId);
   };
 
   // 处理图片上传
@@ -529,6 +603,18 @@ const ItemsPage = () => {
     }
   };
 
+  // 清除所有筛选
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    setSelectedCategories([]);
+    setSelectedLocation('');
+  };
+
+  // 更新类别筛选器按钮的样式和文本
+  const categoryFilterButtonText = selectedCategories.length 
+    ? `按类别筛选 (${selectedCategories.length})` 
+    : '按类别筛选';
+
   return (
     <Paper elevation={3} sx={{ p: 3 }}>
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -549,244 +635,213 @@ const ItemsPage = () => {
       </Typography>
       
       {/* 搜索和筛选工具栏 */}
-      <Box sx={{ mb: 3, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-        <TextField
-          placeholder="搜索物品..."
+      <Box sx={{ mb: 3, display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+        <form onSubmit={handleSearchSubmit}>
+          <TextField
+            size="small"
+            variant="outlined"
+            placeholder="搜索物品..."
+            value={searchQuery}
+            onChange={handleSearch}
+            sx={{ width: { xs: '100%', sm: '300px' }, mb: { xs: 2, sm: 0 } }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+              endAdornment: isFiltering ? (
+                <InputAdornment position="end">
+                  <CircularProgress size={20} />
+                </InputAdornment>
+              ) : null,
+            }}
+          />
+        </form>
+        
+        {/* 类别筛选器 */}
+        <Button
           variant="outlined"
+          startIcon={<CategoryIcon />}
+          onClick={handleCategoryFilterClick}
+          aria-describedby={categoryFilterId}
+          color={selectedCategories.length > 0 ? "primary" : "inherit"}
           size="small"
-          value={searchQuery}
-          onChange={handleSearch}
-          sx={{ flexGrow: 1, minWidth: 200 }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
+        >
+          {categoryFilterButtonText}
+        </Button>
+        <Popover
+          id={categoryFilterId}
+          open={isCategoryFilterOpen}
+          anchorEl={categoryAnchorEl}
+          onClose={handleCategoryFilterClose}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'left',
           }}
-        />
-        
-        {/* 清除所有筛选 */}
-        {(searchQuery || selectedCategories.length > 0 || selectedLocation) && (
-          <Button 
-            variant="outlined"
-            size="small"
-            onClick={() => {
-              setSearchQuery('');
-              setSelectedCategories([]);
-              setSelectedLocation('');
-            }}
-          >
-            清除所有筛选
-          </Button>
-        )}
-        
-        {/* 自定义类别筛选器 */}
-        <Box>
-          <Button
-            variant="outlined"
-            startIcon={<FilterListIcon />}
-            onClick={handleCategoryFilterClick}
-            aria-describedby={categoryFilterId}
-            color={selectedCategories.length > 0 ? "primary" : "inherit"}
-            size="small"
-          >
-            按类别筛选 {selectedCategories.length > 0 && `(${selectedCategories.length})`}
-          </Button>
-          <Popover
-            id={categoryFilterId}
-            open={isCategoryFilterOpen}
-            anchorEl={categoryAnchorEl}
-            onClose={handleCategoryFilterClose}
-            anchorOrigin={{
-              vertical: 'bottom',
-              horizontal: 'left',
-            }}
-          >
-            <Paper sx={{ width: 250, maxHeight: 300, overflow: 'auto' }}>
-              {allCategories.length === 0 ? (
-                <Box sx={{ p: 2, textAlign: 'center' }}>
-                  <Typography variant="body2" color="textSecondary">
-                    暂无类别数据
-                  </Typography>
-                </Box>
-              ) : (
-                <List dense sx={{ pt: 0, pb: 0 }}>
-                  {allCategories.map((category) => (
-                    <ListItem
-                      key={category}
-                      dense
-                      button
-                      onClick={() => handleCategoryToggle(category)}
-                    >
-                      <ListItemIcon sx={{ minWidth: 36 }}>
-                        <Checkbox
-                          edge="start"
-                          checked={selectedCategories.indexOf(category) !== -1}
-                          tabIndex={-1}
-                          disableRipple
-                          size="small"
-                        />
-                      </ListItemIcon>
-                      <ListItemText primary={category} />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
-              <Divider />
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 1 }}>
-                <Button 
-                  size="small" 
-                  onClick={() => setSelectedCategories([])}
-                  disabled={selectedCategories.length === 0}
-                >
-                  清除
-                </Button>
-                <Button 
-                  size="small" 
-                  onClick={handleCategoryFilterClose}
-                  color="primary"
-                >
-                  确定
-                </Button>
+        >
+          <Paper sx={{ width: 250, maxHeight: 300, overflow: 'auto' }}>
+            {allCategories.length === 0 ? (
+              <Box sx={{ p: 2, textAlign: 'center' }}>
+                <Typography variant="body2" color="textSecondary">
+                  暂无类别数据
+                </Typography>
               </Box>
-            </Paper>
-          </Popover>
-        </Box>
-        
-        {/* 位置筛选器 */}
-        <Box>
-          <Button
-            variant="outlined"
-            startIcon={<LocationIcon />}
-            onClick={handleLocationFilterClick}
-            aria-describedby={locationFilterId}
-            color={selectedLocation ? "primary" : "inherit"}
-            size="small"
-          >
-            按位置筛选 {selectedLocation && `(${getLocationName(selectedLocation)})`}
-          </Button>
-          <Popover
-            id={locationFilterId}
-            open={isLocationFilterOpen}
-            anchorEl={locationAnchorEl}
-            onClose={handleLocationFilterClose}
-            anchorOrigin={{
-              vertical: 'bottom',
-              horizontal: 'left',
-            }}
-          >
-            <Paper sx={{ width: 250, maxHeight: 300, overflow: 'auto' }}>
-              {locations.length === 0 ? (
-                <Box sx={{ p: 2, textAlign: 'center' }}>
-                  <Typography variant="body2" color="textSecondary">
-                    暂无位置数据
-                  </Typography>
-                </Box>
-              ) : (
-                <List dense sx={{ pt: 0, pb: 0 }}>
+            ) : (
+              <List dense sx={{ pt: 0, pb: 0 }}>
+                {allCategories.map((category) => (
                   <ListItem
+                    key={category}
                     dense
                     button
-                    onClick={() => handleLocationSelect('')}
-                    selected={selectedLocation === ''}
+                    onClick={() => handleCategoryToggle(category)}
                   >
                     <ListItemIcon sx={{ minWidth: 36 }}>
                       <Checkbox
                         edge="start"
-                        checked={selectedLocation === ''}
+                        checked={selectedCategories.indexOf(category) !== -1}
                         tabIndex={-1}
                         disableRipple
                         size="small"
                       />
                     </ListItemIcon>
-                    <ListItemText primary="所有位置" />
+                    <ListItemText primary={category} />
                   </ListItem>
-                  {locations.map((location) => (
-                    <ListItem
-                      key={location.id}
-                      dense
-                      button
-                      onClick={() => handleLocationSelect(location.id)}
-                      selected={Number(selectedLocation) === location.id}
-                    >
-                      <ListItemIcon sx={{ minWidth: 36 }}>
-                        <Checkbox
-                          edge="start"
-                          checked={Number(selectedLocation) === location.id}
-                          tabIndex={-1}
-                          disableRipple
-                          size="small"
-                        />
-                      </ListItemIcon>
-                      <ListItemText primary={location.name} />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
-              <Divider />
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 1 }}>
-                <Button 
-                  size="small" 
-                  onClick={() => {
-                    setSelectedLocation('');
-                    handleLocationFilterClose();
-                  }}
-                  disabled={!selectedLocation}
-                >
-                  清除
-                </Button>
-                <Button 
-                  size="small" 
-                  onClick={handleLocationFilterClose}
-                  color="primary"
-                >
-                  确定
-                </Button>
-              </Box>
-            </Paper>
-          </Popover>
-        </Box>
+                ))}
+              </List>
+            )}
+            <Divider />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 1 }}>
+              <Button 
+                size="small" 
+                onClick={() => setSelectedCategories([])}
+                disabled={selectedCategories.length === 0}
+              >
+                清除
+              </Button>
+              <Button 
+                size="small" 
+                onClick={handleCategoryFilterClose}
+                color="primary"
+              >
+                确定
+              </Button>
+            </Box>
+          </Paper>
+        </Popover>
         
-        {/* 选中的类别标签展示 */}
-        {selectedCategories.length > 0 && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: searchQuery ? 1 : 0 }}>
-            <Typography variant="body2" color="textSecondary" sx={{ mr: 1, alignSelf: 'center' }}>
-              已选类别:
-            </Typography>
-            {selectedCategories.map((category) => (
-              <Chip
-                key={category}
-                label={category}
-                size="small"
-                onDelete={() => {
-                  setSelectedCategories(selectedCategories.filter((cat) => cat !== category));
+        {/* 位置筛选器 */}
+        <Button
+          variant="outlined"
+          startIcon={<LocationIcon />}
+          onClick={handleLocationFilterClick}
+          aria-describedby={locationFilterId}
+          color={selectedLocation ? "primary" : "inherit"}
+          size="small"
+        >
+          按位置筛选 {selectedLocation && `(${getLocationName(selectedLocation)})`}
+        </Button>
+        <Popover
+          id={locationFilterId}
+          open={isLocationFilterOpen}
+          anchorEl={locationAnchorEl}
+          onClose={handleLocationFilterClose}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'left',
+          }}
+        >
+          <Paper sx={{ width: 280, maxHeight: 350, overflow: 'auto' }}>
+            {locations.length === 0 ? (
+              <Box sx={{ p: 2, textAlign: 'center' }}>
+                <Typography variant="body2" color="textSecondary">
+                  暂无位置数据
+                </Typography>
+              </Box>
+            ) : (
+              <List dense sx={{ pt: 0, pb: 0 }}>
+                <ListItem
+                  dense
+                  button
+                  onClick={() => handleLocationSelect('')}
+                  selected={selectedLocation === ''}
+                >
+                  <ListItemIcon sx={{ minWidth: 36 }}>
+                    <Checkbox
+                      edge="start"
+                      checked={selectedLocation === ''}
+                      tabIndex={-1}
+                      disableRipple
+                      size="small"
+                    />
+                  </ListItemIcon>
+                  <ListItemText primary="所有位置" primaryTypographyProps={{ style: { fontWeight: 'bold' } }} />
+                </ListItem>
+                <Divider />
+                {renderLocationTree(locationTree)}
+              </List>
+            )}
+            <Divider />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 1 }}>
+              <Button 
+                size="small" 
+                onClick={() => {
+                  setSelectedLocation('');
+                  handleLocationFilterClose();
                 }}
-              />
-            ))}
-            <Chip
-              label="清除全部"
+                disabled={!selectedLocation}
+              >
+                清除
+              </Button>
+              <Button 
+                size="small" 
+                onClick={handleLocationFilterClose}
+                color="primary"
+              >
+                确定
+              </Button>
+            </Box>
+          </Paper>
+        </Popover>
+        
+        {/* 清除所有筛选 */}
+        {(searchQuery || selectedCategories.length > 0 || selectedLocation) && (
+          <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+            {selectedCategories.length > 0 && (
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => setSelectedCategories([])}
+              >
+                清除类别筛选
+              </Button>
+            )}
+            
+            {selectedLocation && (
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => setSelectedLocation('')}
+              >
+                清除位置筛选
+              </Button>
+            )}
+            
+            <Button
+              variant="text"
               size="small"
-              variant="outlined"
-              onClick={() => setSelectedCategories([])}
-            />
+              onClick={clearAllFilters}
+            >
+              清除所有筛选
+            </Button>
           </Box>
         )}
         
-        {/* 选中的位置标签展示 */}
-        {selectedLocation && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-            <Typography variant="body2" color="textSecondary" sx={{ mr: 1, alignSelf: 'center' }}>
-              已选位置:
-            </Typography>
-            <Chip
-              label={getLocationName(selectedLocation)}
-              size="small"
-              onDelete={() => {
-                setSelectedLocation('');
-              }}
-            />
-          </Box>
+        {/* 筛选条件说明 */}
+        {selectedCategories.length > 0 && selectedLocation && (
+          <Typography variant="caption" color="textSecondary" sx={{ ml: 2 }}>
+            显示同时满足所选类别和位置的物品
+          </Typography>
         )}
       </Box>
 
@@ -804,7 +859,9 @@ const ItemsPage = () => {
         </Box>
       ) : items.length === 0 ? (
         <Alert severity="info" sx={{ mb: 3 }}>
-          暂无物品数据，请点击"添加物品"按钮添加
+          {searchQuery || selectedCategories.length > 0 || selectedLocation ? 
+            "没有找到符合筛选条件的物品" : 
+            "暂无物品数据，请点击\"添加物品\"按钮添加"}
         </Alert>
       ) : (
         <Grid container spacing={3}>

@@ -80,7 +80,8 @@ const MainLayout = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState({
     items: [],
-    locations: []
+    locations: [],
+    allLocations: []
   });
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchTab, setSearchTab] = useState(0);
@@ -90,7 +91,8 @@ const MainLayout = ({ children }) => {
     if (!query.trim()) {
       setSearchResults({
         items: [],
-        locations: []
+        locations: [],
+        allLocations: []
       });
       return;
     }
@@ -99,19 +101,26 @@ const MainLayout = ({ children }) => {
     try {
       // 获取所有位置数据，以便正确显示物品位置信息
       const allLocations = await getLocations();
+      console.log('获取到的所有位置数量:', allLocations.length);
       
       // 搜索物品
       const items = await searchItems({ search: query });
+      console.log('搜索到的物品数量:', items.length);
       
       // 搜索位置 (简单过滤)
-      const locations = allLocations.filter(loc => 
-        loc.name.toLowerCase().includes(query.toLowerCase()) || 
-        (loc.description && loc.description.toLowerCase().includes(query.toLowerCase()))
-      );
+      const filteredLocations = allLocations.filter(loc => {
+        const nameMatch = loc.name.toLowerCase().includes(query.toLowerCase());
+        const descMatch = loc.description && loc.description.toLowerCase().includes(query.toLowerCase());
+        return nameMatch || descMatch;
+      });
+      console.log('搜索到的位置数量:', filteredLocations.length);
+      console.log('搜索位置关键词:', query);
+      console.log('过滤后的位置:', filteredLocations);
       
       setSearchResults({
         items,
-        locations: allLocations // 存储所有位置以便正确显示物品位置信息
+        locations: filteredLocations, // 搜索结果中的位置列表（用于Tab显示）
+        allLocations // 添加所有位置数据，用于正确显示物品的位置信息
       });
     } catch (error) {
       console.error('搜索失败:', error);
@@ -157,7 +166,8 @@ const MainLayout = ({ children }) => {
     setSearchQuery('');
     setSearchResults({
       items: [],
-      locations: []
+      locations: [],
+      allLocations: []
     });
   };
 
@@ -175,7 +185,7 @@ const MainLayout = ({ children }) => {
   };
 
   const handleSearchLocationClick = (location) => {
-    navigate(`/locations?selected=${location.id}`);
+    navigate(`/items?location_id=${location.id}`); // 修改为跳转到物品页面，并使用该位置过滤结果
     handleCloseSearchDialog();
   };
 
@@ -674,7 +684,7 @@ const MainLayout = ({ children }) => {
                                 {item.location_id && (
                                   <Chip 
                                     icon={<LocationIcon />} 
-                                    label={searchResults.locations.find(loc => loc.id === item.location_id)?.name || '位置'} 
+                                    label={searchResults.allLocations.find(loc => loc.id === item.location_id)?.name || '位置'} 
                                     size="small" 
                                     variant="outlined" 
                                   />

@@ -112,8 +112,8 @@ const Home = () => {
       {/* Hero Section */}
       <Container maxWidth="lg">
         <Grid container spacing={4} alignItems="center" sx={{ mb: { xs: 6, md: 10 } }}>
-          <Grid item xs={12} sx={{ textAlign: 'center' }}>
-            <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 800, mx: 'auto' }}>
+          <Grid item xs={12} md={6}>
+            <Box sx={{ p: { xs: 2, md: 4 } }}>
               <Typography 
                 variant="h2" 
                 component="h1" 
@@ -138,7 +138,7 @@ const Home = () => {
               <Typography variant="body1" paragraph sx={{ mb: 4 }}>
                 家庭物品管理系统帮助您追踪所有家庭物品的位置、保修期和重要提醒，让您的家庭管理更加井井有条。
               </Typography>
-              <Stack direction="row" spacing={2} justifyContent="center">
+              <Stack direction="row" spacing={2}>
                 <Button 
                   component={Link} 
                   to="/login" 
@@ -171,6 +171,11 @@ const Home = () => {
                 </Button>
               </Stack>
             </Box>
+          </Grid>
+          
+          {/* 右侧空白区域，保持左右平衡 */}
+          <Grid item xs={12} md={6} sx={{ display: { xs: 'none', md: 'block' } }}>
+            <Box sx={{ p: 4 }}></Box>
           </Grid>
         </Grid>
 

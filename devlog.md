@@ -1,5 +1,36 @@
 # 家庭物品管理系统开发日志
 
+## 2025-03-14 修复数据库连接问题
+
+### 会话目标
+修复后端容器无法连接到数据库的问题。
+
+### 实现功能
+- 解决了PostgreSQL数据库容器启动问题
+- 确保后端服务可以成功连接到数据库
+- 恢复了应用的正常运行
+
+### 关键技术决策
+- 通过分析Docker日志定位问题为数据库容器异常退出导致的空锁文件
+- 使用docker-compose down -v命令完全清理容器和卷，解决锁文件问题
+- 重建所有容器，确保干净的启动环境
+
+### 问题解决方案
+- 识别到问题为"lock file postmaster.pid is empty"错误
+- 完全移除所有容器和相关的卷以解决文件锁问题
+- 重新初始化数据库，确保数据库迁移成功应用
+
+### 采用技术栈
+- 容器化：Docker, Docker Compose
+- 数据库：PostgreSQL
+- 后端：FastAPI
+
+### 涉及文件
+- docker-compose.yml
+- docker-compose-config/base.yml
+- docker-compose-config/dev.yml
+- backend/start.sh
+
 ## 2025-03-14 完成前端功能增强
 
 ### 会话目标

@@ -86,6 +86,29 @@ const MainLayout = ({ children }) => {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchTab, setSearchTab] = useState(0);
 
+  // 添加全局快捷键处理函数
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // 检查是否按下了 cmd+f (macOS) 或 ctrl+f (Windows/Linux)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        // 检查当前页面是否有正在编辑的浮窗
+        const hasEditingDialog = document.querySelector('.MuiDialog-root[role="dialog"]');
+        if (!hasEditingDialog) {
+          e.preventDefault(); // 阻止默认的浏览器搜索行为
+          setSearchDialogOpen(true);
+        }
+      }
+    };
+
+    // 添加事件监听器
+    window.addEventListener('keydown', handleKeyDown);
+
+    // 清理函数
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   // 处理搜索
   const handleSearch = async (query) => {
     if (!query.trim()) {

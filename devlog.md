@@ -524,3 +524,34 @@
 
 ### 涉及文件
 - `frontend/src/pages/items/ItemsPage.js`：修改数据加载和筛选逻辑
+
+## 2025-03-14 实现全局快捷键和提醒卡片跳转功能
+
+### 会话目标
+实现全局快捷键 cmd+f 打开搜索功能，并完善 dashboard 页面提醒卡片的跳转功能。
+
+### 实现功能
+- 添加全局快捷键 cmd+f，在没有打开编辑对话框的情况下，可以快速打开全局搜索
+- 完善 dashboard 页面上的两个提醒卡片（已过期提醒和即将到期提醒）的"查看全部"按钮功能
+- 实现从 dashboard 页面直接跳转到提醒管理页面的对应标签
+
+### 关键技术决策
+- 使用 React useEffect 钩子添加全局键盘事件监听器，监听 cmd+f 或 ctrl+f 组合键
+- 通过 DOM 查询检测页面是否有打开的对话框，避免与编辑功能冲突
+- 使用 React Router 的 useNavigate 和 state 参数实现带状态的页面跳转
+- 在 RemindersPage 组件中使用 useLocation 钩子获取路由状态中的 tabValue 参数
+
+### 问题解决方案
+- 通过 e.preventDefault() 阻止浏览器默认的搜索行为，实现自定义搜索功能
+- 使用 document.querySelector 检测页面上是否有打开的对话框
+- 通过路由状态传递 tabValue 参数，实现跳转到指定标签页
+
+### 采用技术栈
+- 前端：React, React Router, Material UI
+- 状态管理：React Hooks (useState, useEffect)
+- 路由：React Router (useNavigate, useLocation)
+
+### 涉及文件
+- `frontend/src/components/layout/MainLayout.js`：添加全局快捷键功能
+- `frontend/src/pages/dashboard/DashboardPage.js`：修改提醒卡片组件，添加跳转功能
+- `frontend/src/pages/reminders/RemindersPage.js`：添加从路由状态读取标签值的功能

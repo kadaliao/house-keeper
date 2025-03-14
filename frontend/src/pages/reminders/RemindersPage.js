@@ -43,6 +43,7 @@ import {
 } from '@mui/icons-material';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { format, isAfter, isBefore, addDays } from 'date-fns';
+import { useLocation } from 'react-router-dom';
 
 import { getReminders, createReminder, updateReminder, deleteReminder } from '../../services/reminders';
 import { getItems } from '../../services/items';
@@ -87,6 +88,16 @@ const RemindersPage = () => {
     is_completed: false,
     item_id: ''
   });
+
+  const location = useLocation();
+  const { refreshReminders } = useRemindersContext();
+  
+  // 从路由状态初始化标签值
+  useEffect(() => {
+    if (location.state && typeof location.state.tabValue === 'number') {
+      setTabValue(location.state.tabValue);
+    }
+  }, [location.state]);
 
   // 将fetchData函数提取到组件顶层作用域
   const fetchData = async () => {

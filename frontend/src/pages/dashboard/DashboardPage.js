@@ -48,6 +48,7 @@ import {
   Check as CheckIcon,
   Warning as WarningIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { getItems } from '../../services/items';
 import { getLocations } from '../../services/locations';
 import { getDueReminders, getUpcomingReminders } from '../../services/reminders';
@@ -135,7 +136,7 @@ const StatCard = ({ title, value, icon, color, trend, trendValue, subtitle }) =>
 };
 
 // 提醒列表组件
-const ReminderList = ({ title, items, emptyText, icon, color }) => {
+const ReminderList = ({ title, items, emptyText, icon, color, onViewAll }) => {
   const theme = useTheme();
   const IconComponent = icon;
 
@@ -255,6 +256,7 @@ const ReminderList = ({ title, items, emptyText, icon, color }) => {
           size="small" 
           fullWidth
           sx={{ borderRadius: 1 }}
+          onClick={onViewAll}
         >
           查看全部
         </Button>
@@ -303,6 +305,7 @@ const DashboardPage = () => {
   const [error, setError] = useState(null);
   const theme = useTheme();
   const colors = getColors(theme);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -620,7 +623,7 @@ const DashboardPage = () => {
                     onClick={(data) => {
                       // 如果数据包含id，导航到位置详情页面
                       if (data && data.id) {
-                        window.location.href = `/locations?selected=${data.id}`;
+                        navigate(`/locations?selected=${data.id}`);
                       }
                     }}
                   >
@@ -653,7 +656,7 @@ const DashboardPage = () => {
                   size="small" 
                   color="info"
                   startIcon={<LocationIcon />}
-                  onClick={() => window.location.href = '/locations'}
+                  onClick={() => navigate('/locations')}
                 >
                   前往管理位置
                 </Button>
@@ -669,6 +672,7 @@ const DashboardPage = () => {
             emptyText="没有已过期的提醒"
             icon={NotificationsIcon}
             color={theme.palette.error.main}
+            onViewAll={() => navigate('/reminders', { state: { tabValue: 1 } })}
           />
         </Grid>
         
@@ -679,6 +683,7 @@ const DashboardPage = () => {
             emptyText="没有即将到期的提醒"
             icon={AccessTimeIcon}
             color={theme.palette.warning.main}
+            onViewAll={() => navigate('/reminders', { state: { tabValue: 4 } })}
           />
         </Grid>
       </Grid>

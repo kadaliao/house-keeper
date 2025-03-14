@@ -200,13 +200,20 @@ class TestItemCRUD:
             assert category not in item_categories
     
     def test_search_by_name(self, db: Session, test_user, test_location):
-        """测试按名称搜索物品"""
-        # 创建不同名称的物品
-        item_names = ["Laptop", "Phone", "Tablet", "Phone Charger"]
-        for name in item_names:
+        """测试按名称和描述搜索物品"""
+        # 创建不同名称和描述的物品
+        test_items = [
+            {"name": "Laptop", "description": "A portable computer"},
+            {"name": "Phone", "description": "A mobile device"},
+            {"name": "Tablet", "description": "A touchscreen device"},
+            {"name": "Phone Charger", "description": "Charger for mobile phones"},
+            {"name": "Computer Mouse", "description": "Wireless mouse for laptop"}
+        ]
+        
+        for item_data in test_items:
             item_in = ItemCreate(
-                name=name,
-                description=f"A {name.lower()}",
+                name=item_data["name"],
+                description=item_data["description"],
                 category="Electronics",
                 quantity=1,
                 price=100.0,
@@ -214,16 +221,30 @@ class TestItemCRUD:
             )
             crud_item.create(db, obj_in=item_in, owner_id=test_user.id)
         
-        # 测试搜索包含"Phone"的物品
+        # 测试按名称搜索包含"Phone"的物品
         items = crud_item.search_by_name(db, name="Phone", owner_id=test_user.id)
         assert len(items) == 2  # "Phone" 和 "Phone Charger"
         for item in items:
             assert "Phone" in item.name
         
-        # 测试搜索包含"Laptop"的物品
+        # 测试按名称搜索包含"Laptop"的物品
         items = crud_item.search_by_name(db, name="Laptop", owner_id=test_user.id)
         assert len(items) == 1
         assert items[0].name == "Laptop"
+        
+        # 测试按描述搜索包含"computer"的物品 - 新增测试
+        items = crud_item.search_by_name(db, name="computer", owner_id=test_user.id)
+        assert len(items) == 2  # 包含"Laptop"和"Computer Mouse"
+        computer_items = {item.name for item in items}
+        assert "Laptop" in computer_items
+        assert "Computer Mouse" in computer_items
+        
+        # 测试按描述搜索包含"mobile"的物品 - 新增测试
+        items = crud_item.search_by_name(db, name="mobile", owner_id=test_user.id)
+        assert len(items) == 2  # 包含"Phone"和"Phone Charger"
+        mobile_items = {item.name for item in items}
+        assert "Phone" in mobile_items
+        assert "Phone Charger" in mobile_items
     
     def test_update_item(self, db: Session, test_user, test_location):
         """测试更新物品"""

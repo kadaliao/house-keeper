@@ -26,7 +26,7 @@ def read_items(
     - **categories**: 可选，多个类别，用逗号分隔 (例如: "类别1,类别2,类别3")
     - **category**: 可选，单一类别 (兼容旧版接口)
     - **location_id**: 可选，位置ID
-    - **search**: 可选，搜索关键词
+    - **search**: 可选，搜索关键词，会匹配物品名称和描述
     """
     # 处理多类别筛选（优先使用categories参数）
     if categories:
@@ -44,7 +44,7 @@ def read_items(
         )
     elif location_id:
         items = crud.item.get_by_location(
-            db, location_id=location_id, skip=skip, limit=limit
+            db, location_id=location_id, owner_id=current_user.id, skip=skip, limit=limit
         )
     elif search:
         items = crud.item.search_by_name(

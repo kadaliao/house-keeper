@@ -25,9 +25,16 @@ export const deleteItem = async (id) => {
   return response.data;
 };
 
-export const searchItems = async (query) => {
-  const response = await api.get('/items', { params: { search: query } });
-  return response.data;
+export const searchItems = async (params = {}) => {
+  try {
+    console.log('搜索物品请求参数:', params);
+    const response = await api.get('/items', { params });
+    console.log('搜索物品结果:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('搜索物品失败:', error);
+    throw error;
+  }
 };
 
 export const getItemsByCategory = async (category) => {

@@ -230,4 +230,60 @@ class TestItemsEndpoints:
         assert category_counts["Books"] == 2
         
         # 验证未选中的类别没有返回
-        assert category_counts["Clothing"] == 0 
+        assert category_counts["Clothing"] == 0
+        
+    def test_search_items(self, authenticated_client: TestClient, db: Session, test_user: User, test_location: Location):
+        """测试搜索物品（通过名称和描述）"""
+        # 创建测试物品
+        test_items = [
+            {"name": "Laptop Computer", "description": "Portable work device"},
+            {"name": "Mobile Phone", "description": "Communication device"},
+            {"name": "Tablet", "description": "Portable computing device for reading"},
+            {"name": "Phone Charger", "description": "Power adapter for mobile phones"},
+            {"name": "Wireless Mouse", "description": "Computer accessory for laptop"}
+        ]
+        
+        for item_data in test_items:
+            item = Item(
+                name=item_data["name"],
+                description=item_data["description"],
+                category="Electronics",
+                quantity=1,
+                purchase_date=datetime.now(timezone.utc),
+                price=100.0,
+                location_id=test_location.id,
+                owner_id=test_user.id,
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc)
+            )
+            db.add(item)
+        
+        db.commit()
+        
+        # 测试通过名称搜索
+        response = authenticated_client.get("/api/v1/items/", params={"search": "Phone"})
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2  # "Mobile Phone" 和 "Phone Charger"
+        names = [item["name"] for item in data]
+        assert "Mobile Phone" in names
+        assert "Phone Charger" in names
+        
+        # 测试通过描述搜索
+        response = authenticated_client.get("/api/v1/items/", params={"search": "device"})
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 3  # 包含"Laptop Computer", "Mobile Phone", "Tablet"
+        names = [item["name"] for item in data]
+        assert "Laptop Computer" in names
+        assert "Mobile Phone" in names
+        assert "Tablet" in names
+        
+        # 测试通过描述搜索 "computer"
+        response = authenticated_client.get("/api/v1/items/", params={"search": "computer"})
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2  # 包含"Laptop Computer"和"Wireless Mouse"
+        names = [item["name"] for item in data]
+        assert "Laptop Computer" in names
+        assert "Wireless Mouse" in names 

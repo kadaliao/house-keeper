@@ -21,15 +21,14 @@ class CRUDItem(CRUDBase[Item, ItemCreate, ItemUpdate]):
         )
     
     def get_by_location(
-        self, db: Session, *, location_id: int, skip: int = 0, limit: int = 100
+        self, db: Session, *, location_id: int, skip: int = 0, limit: int = 100, owner_id: Optional[int] = None
     ) -> List[Item]:
-        return (
-            db.query(self.model)
-            .filter(Item.location_id == location_id)
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = db.query(self.model).filter(Item.location_id == location_id)
+        
+        if owner_id is not None:
+            query = query.filter(Item.owner_id == owner_id)
+            
+        return query.offset(skip).limit(limit).all()
     
     def get_by_category(
         self, db: Session, *, category: str, owner_id: int, skip: int = 0, limit: int = 100
@@ -61,9 +60,18 @@ class CRUDItem(CRUDBase[Item, ItemCreate, ItemUpdate]):
     def search_by_name(
         self, db: Session, *, name: str, owner_id: int, skip: int = 0, limit: int = 100
     ) -> List[Item]:
+        """
+        通过名称或描述搜索物品
+        """
         return (
             db.query(self.model)
-            .filter(Item.name.ilike(f"%{name}%"), Item.owner_id == owner_id)
+            .filter(
+                or_(
+                    Item.name.ilike(f"%{name}%"),
+                    Item.description.ilike(f"%{name}%")
+                ),
+                Item.owner_id == owner_id
+            )
             .offset(skip)
             .limit(limit)
             .all()

@@ -48,7 +48,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { format } from 'date-fns';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { getItems, createItem, updateItem, deleteItem, searchItems } from '../../services/items';
+import { getItems, createItem, updateItem, deleteItem, searchItems, getItem } from '../../services/items';
 import { getLocations } from '../../services/locations';
 import { uploadImage } from '../../services/uploads';
 
@@ -61,7 +61,9 @@ const ItemsPage = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState('');
   const [categoryAnchorEl, setCategoryAnchorEl] = useState(null);
+  const [locationAnchorEl, setLocationAnchorEl] = useState(null);
   const [allCategories, setAllCategories] = useState([]);
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -130,21 +132,29 @@ const ItemsPage = () => {
             await fetchData();
           }
           
-          // 查找要编辑的物品
-          const itemToEdit = items.find(item => item.id === parseInt(editItemId));
-          
-          if (itemToEdit) {
+          // 尝试直接通过API获取物品，而不是从当前列表中查找
+          const itemId = parseInt(editItemId);
+          try {
+            const itemToEdit = await getItem(itemId);
             handleOpenEditDialog(itemToEdit);
             // 清除URL参数，避免刷新页面时重复打开对话框
             navigate('/items', { replace: true });
-          } else {
-            // 如果找不到物品，显示错误消息
-            setSnackbar({
-              open: true,
-              message: `未找到ID为${editItemId}的物品`,
-              severity: 'error'
-            });
-            navigate('/items', { replace: true });
+          } catch (itemError) {
+            console.error('获取物品详情失败:', itemError);
+            // 如果直接获取失败，尝试从列表中查找
+            const existingItem = items.find(item => item.id === itemId);
+            if (existingItem) {
+              handleOpenEditDialog(existingItem);
+              navigate('/items', { replace: true });
+            } else {
+              // 如果仍找不到物品，显示错误消息
+              setSnackbar({
+                open: true,
+                message: `未找到ID为${editItemId}的物品`,
+                severity: 'error'
+              });
+              navigate('/items', { replace: true });
+            }
           }
         } catch (err) {
           console.error('加载编辑物品失败:', err);
@@ -153,7 +163,7 @@ const ItemsPage = () => {
       
       loadAndOpenEditor();
     }
-  }, [location.search, items.length]); // 当URL参数或物品列表变化时重新执行
+  }, [location.search, items.length]);
 
   // 查询过滤
   useEffect(() => {
@@ -171,6 +181,10 @@ const ItemsPage = () => {
           params.categories = selectedCategories.join(',');
         }
         
+        if (selectedLocation) {
+          params.location_id = selectedLocation;
+        }
+        
         const filteredItems = await searchItems(params);
         setItems(filteredItems);
         
@@ -183,12 +197,12 @@ const ItemsPage = () => {
       }
     };
     
-    if (searchQuery || (selectedCategories && selectedCategories.length > 0)) {
+    if (searchQuery || (selectedCategories && selectedCategories.length > 0) || selectedLocation) {
       fetchFilteredItems();
     } else {
       fetchData();
     }
-  }, [searchQuery, selectedCategories]);
+  }, [searchQuery, selectedCategories, selectedLocation]);
 
   // 获取所有类别 - 这个函数现在可以直接返回allCategories
   const getCategories = () => {
@@ -388,9 +402,29 @@ const ItemsPage = () => {
     setSelectedCategories(newSelectedCategories);
   };
 
+  // 处理位置筛选器菜单打开
+  const handleLocationFilterClick = (event) => {
+    setLocationAnchorEl(event.currentTarget);
+  };
+
+  // 处理位置筛选器菜单关闭
+  const handleLocationFilterClose = () => {
+    setLocationAnchorEl(null);
+  };
+
+  // 处理位置选择
+  const handleLocationSelect = (locationId) => {
+    setSelectedLocation(locationId);
+    handleLocationFilterClose();
+  };
+
   // 检查类别筛选器是否打开
   const isCategoryFilterOpen = Boolean(categoryAnchorEl);
   const categoryFilterId = isCategoryFilterOpen ? 'category-filter-popover' : undefined;
+
+  // 检查位置筛选器是否打开
+  const isLocationFilterOpen = Boolean(locationAnchorEl);
+  const locationFilterId = isLocationFilterOpen ? 'location-filter-popover' : undefined;
 
   // 关闭提示框
   const handleCloseSnackbar = () => {
@@ -529,13 +563,14 @@ const ItemsPage = () => {
         />
         
         {/* 清除所有筛选 */}
-        {(searchQuery || selectedCategories.length > 0) && (
+        {(searchQuery || selectedCategories.length > 0 || selectedLocation) && (
           <Button 
             variant="outlined"
             size="small"
             onClick={() => {
               setSearchQuery('');
               setSelectedCategories([]);
+              setSelectedLocation('');
             }}
           >
             清除所有筛选
@@ -615,6 +650,98 @@ const ItemsPage = () => {
           </Popover>
         </Box>
         
+        {/* 位置筛选器 */}
+        <Box>
+          <Button
+            variant="outlined"
+            startIcon={<LocationIcon />}
+            onClick={handleLocationFilterClick}
+            aria-describedby={locationFilterId}
+            color={selectedLocation ? "primary" : "inherit"}
+            size="small"
+          >
+            按位置筛选 {selectedLocation && '(1)'}
+          </Button>
+          <Popover
+            id={locationFilterId}
+            open={isLocationFilterOpen}
+            anchorEl={locationAnchorEl}
+            onClose={handleLocationFilterClose}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'left',
+            }}
+          >
+            <Paper sx={{ width: 250, maxHeight: 300, overflow: 'auto' }}>
+              {locations.length === 0 ? (
+                <Box sx={{ p: 2, textAlign: 'center' }}>
+                  <Typography variant="body2" color="textSecondary">
+                    暂无位置数据
+                  </Typography>
+                </Box>
+              ) : (
+                <List dense sx={{ pt: 0, pb: 0 }}>
+                  <ListItem
+                    dense
+                    button
+                    onClick={() => handleLocationSelect('')}
+                  >
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      <Checkbox
+                        edge="start"
+                        checked={selectedLocation === ''}
+                        tabIndex={-1}
+                        disableRipple
+                        size="small"
+                      />
+                    </ListItemIcon>
+                    <ListItemText primary="所有位置" />
+                  </ListItem>
+                  {locations.map((location) => (
+                    <ListItem
+                      key={location.id}
+                      dense
+                      button
+                      onClick={() => handleLocationSelect(location.id)}
+                    >
+                      <ListItemIcon sx={{ minWidth: 36 }}>
+                        <Checkbox
+                          edge="start"
+                          checked={selectedLocation === location.id}
+                          tabIndex={-1}
+                          disableRipple
+                          size="small"
+                        />
+                      </ListItemIcon>
+                      <ListItemText primary={location.name} />
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+              <Divider />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 1 }}>
+                <Button 
+                  size="small" 
+                  onClick={() => {
+                    setSelectedLocation('');
+                    handleLocationFilterClose();
+                  }}
+                  disabled={!selectedLocation}
+                >
+                  清除
+                </Button>
+                <Button 
+                  size="small" 
+                  onClick={handleLocationFilterClose}
+                  color="primary"
+                >
+                  确定
+                </Button>
+              </Box>
+            </Paper>
+          </Popover>
+        </Box>
+        
         {/* 选中的类别标签展示 */}
         {selectedCategories.length > 0 && (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
@@ -633,6 +760,19 @@ const ItemsPage = () => {
               size="small"
               variant="outlined"
               onClick={() => setSelectedCategories([])}
+            />
+          </Box>
+        )}
+        
+        {/* 选中的位置标签展示 */}
+        {selectedLocation && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            <Chip
+              label={`位置: ${getLocationName(selectedLocation)}`}
+              size="small"
+              onDelete={() => {
+                setSelectedLocation('');
+              }}
             />
           </Box>
         )}

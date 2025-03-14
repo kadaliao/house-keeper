@@ -413,31 +413,70 @@
 ### 涉及文件
 - frontend/src/pages/items/ItemsPage.js
 
-## 2025-03-14 修复全局搜索功能
+## 2025-03-14 完善搜索功能和相关测试
 
 ### 会话目标
-修复全局搜索功能中的两个问题：
-1. 搜索结果中物品的位置信息不正确显示
-2. 点击搜索结果中的物品时，实现跳转到物品信息编辑页面
+完善搜索功能，修复搜索相关问题，并更新相应的测试用例。
 
 ### 实现功能
-- 修复了全局搜索结果中物品位置信息显示问题
-- 实现了点击搜索结果中的物品时跳转到物品编辑页面的功能
+- 修复了全局搜索中物品位置信息不正确显示的问题
+- 修复了从搜索结果点击物品跳转到编辑页面时"未找到物品"的问题
+- 增强了物品搜索功能，使其同时搜索物品名称和描述
+- 更新了后端API文档和测试用例
 
 ### 关键技术决策
-- 修改搜索处理函数，获取并存储所有位置数据，而不仅仅是筛选结果
-- 使用URL参数实现物品编辑功能，在ItemsPage组件中检测并处理edit参数
-- 采用React Router的navigate功能实现页面跳转和参数传递
+- 在全局搜索中添加了`allLocations`字段，用于存储完整的位置数据，以便正确解析物品位置信息
+- 改进了物品编辑页面的加载逻辑，使用API直接获取物品，避免依赖当前列表中的数据
+- 优化了后端搜索实现，使用SQLAlchemy的OR操作符实现多字段搜索
 
 ### 问题解决方案
-- 通过存储完整的位置数据列表，解决了物品位置信息无法正确显示的问题
-- 通过URL参数传递和处理，实现了从搜索结果直接跳转到物品编辑界面
-- 在ItemsPage组件中添加URL参数检测逻辑，自动打开编辑对话框
+- 在全局搜索结果中，通过存储所有位置数据并使用它来解析物品位置，解决了位置信息显示问题
+- 通过修改`ItemsPage`中处理URL参数的逻辑，直接从API获取物品数据，解决了编辑物品时找不到物品的问题
+- 修改后端`search_by_name`函数实现，使其同时搜索名称和描述字段
 
 ### 采用技术栈
-- 前端：React, React Router, Material-UI
-- 状态管理：React Hooks
+- 后端：FastAPI, SQLAlchemy
+- 前端：React, Material-UI, React Router
+- 测试框架：pytest
 
 ### 涉及文件
-- `frontend/src/components/layout/MainLayout.js`：修改全局搜索功能
-- `frontend/src/pages/items/ItemsPage.js`：添加URL参数处理逻辑
+- 前端修改：
+  - `frontend/src/components/layout/MainLayout.js`：修复全局搜索中物品位置信息显示
+  - `frontend/src/pages/items/ItemsPage.js`：修复物品编辑页面加载逻辑
+- 后端修改：
+  - `backend/app/crud/crud_item.py`：增强物品搜索功能，匹配名称和描述
+  - `backend/app/api/endpoints/items.py`：更新API文档
+- 测试修改：
+  - `backend/tests/crud/test_item.py`：更新搜索功能测试
+  - `backend/tests/api/test_items.py`：添加API搜索功能测试
+
+## 2025-03-14 修复搜索功能并实现按位置筛选
+
+### 会话目标
+修复物品管理页面的搜索功能，并添加按位置筛选的新功能。
+
+### 实现功能
+- 修复了物品管理页面搜索功能无效的问题
+- 实现了按位置筛选物品的新功能
+- 优化了筛选面板的UI布局和交互体验
+
+### 关键技术决策
+- 修复搜索功能的问题：确保搜索参数正确传递给后端API
+- 复用后端已有的位置筛选API接口，无需修改后端代码
+- 使用与类别筛选相似的UI模式实现位置筛选，保持用户体验一致性
+- 完善了筛选组合功能，支持同时按搜索关键词、类别和位置进行筛选
+
+### 问题解决方案
+- 通过添加selectedLocation状态变量跟踪位置筛选选择
+- 更新fetchFilteredItems函数，确保所有筛选条件（搜索关键词、类别、位置）正确传递
+- 使用Popover组件显示位置选择列表，优化用户交互体验
+- 添加筛选标签，便于用户查看和清除已选择的位置筛选条件
+
+### 采用技术栈
+- 前端：React, Material-UI, React Hooks
+- 状态管理：React useState和useEffect Hooks
+- UI组件：Popover, Chip, Checkbox, Button
+- API通信：使用现有的searchItems服务函数
+
+### 涉及文件
+- `frontend/src/pages/items/ItemsPage.js`：修改搜索功能和添加位置筛选功能

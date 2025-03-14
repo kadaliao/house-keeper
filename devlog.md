@@ -450,33 +450,32 @@
   - `backend/tests/crud/test_item.py`：更新搜索功能测试
   - `backend/tests/api/test_items.py`：添加API搜索功能测试
 
-## 2025-03-14 修复搜索功能并实现按位置筛选
+## 2025-03-14 修复物品筛选功能
 
 ### 会话目标
-修复物品管理页面的搜索功能，并添加按位置筛选的新功能。
+修复物品管理页面中类别筛选和位置筛选功能无效的问题。
 
 ### 实现功能
-- 修复了物品管理页面搜索功能无效的问题
-- 实现了按位置筛选物品的新功能
-- 优化了筛选面板的UI布局和交互体验
+- 修复了物品管理页面的类别筛选和位置筛选功能
+- 优化了筛选标签的显示，增加了更明确的筛选状态提示
+- 改进了位置选择器的UI，提升了用户体验
 
 ### 关键技术决策
-- 修复搜索功能的问题：确保搜索参数正确传递给后端API
-- 复用后端已有的位置筛选API接口，无需修改后端代码
-- 使用与类别筛选相似的UI模式实现位置筛选，保持用户体验一致性
-- 完善了筛选组合功能，支持同时按搜索关键词、类别和位置进行筛选
+- 解决了数据类型不匹配问题：确保传递给后端的location_id为数字类型
+- 增强了空值处理逻辑：确保空位置选择不会发送无效参数
+- 添加了调试日志，方便追踪筛选参数传递情况
+- 改进了UI反馈，使用户更清楚地了解当前筛选状态
 
 ### 问题解决方案
-- 通过添加selectedLocation状态变量跟踪位置筛选选择
-- 更新fetchFilteredItems函数，确保所有筛选条件（搜索关键词、类别、位置）正确传递
-- 使用Popover组件显示位置选择列表，优化用户交互体验
-- 添加筛选标签，便于用户查看和清除已选择的位置筛选条件
+- 修改`fetchFilteredItems`函数，确保正确处理筛选参数的类型和空值
+- 改进`handleLocationSelect`函数，确保位置ID始终为正确的数据类型
+- 增强筛选标签UI，增加类别和位置标签的标题提示
+- 更新位置选择器UI，显示当前选中的位置名称
 
 ### 采用技术栈
 - 前端：React, Material-UI, React Hooks
 - 状态管理：React useState和useEffect Hooks
-- UI组件：Popover, Chip, Checkbox, Button
-- API通信：使用现有的searchItems服务函数
+- UI组件：Popover, Chip, Typography, Button, Checkbox
 
 ### 涉及文件
-- `frontend/src/pages/items/ItemsPage.js`：修改搜索功能和添加位置筛选功能
+- `frontend/src/pages/items/ItemsPage.js`：修复筛选功能，优化UI体验

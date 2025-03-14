@@ -181,9 +181,12 @@ const ItemsPage = () => {
           params.categories = selectedCategories.join(',');
         }
         
-        if (selectedLocation) {
-          params.location_id = selectedLocation;
+        if (selectedLocation && selectedLocation !== '') {
+          // 确保location_id是数字类型
+          params.location_id = Number(selectedLocation);
         }
+        
+        console.log('筛选参数:', params); // 添加调试日志
         
         const filteredItems = await searchItems(params);
         setItems(filteredItems);
@@ -197,7 +200,7 @@ const ItemsPage = () => {
       }
     };
     
-    if (searchQuery || (selectedCategories && selectedCategories.length > 0) || selectedLocation) {
+    if (searchQuery || (selectedCategories && selectedCategories.length > 0) || (selectedLocation && selectedLocation !== '')) {
       fetchFilteredItems();
     } else {
       fetchData();
@@ -414,7 +417,8 @@ const ItemsPage = () => {
 
   // 处理位置选择
   const handleLocationSelect = (locationId) => {
-    setSelectedLocation(locationId);
+    // 确保数字类型的locationId
+    setSelectedLocation(locationId === '' ? '' : Number(locationId));
     handleLocationFilterClose();
   };
 
@@ -660,7 +664,7 @@ const ItemsPage = () => {
             color={selectedLocation ? "primary" : "inherit"}
             size="small"
           >
-            按位置筛选 {selectedLocation && '(1)'}
+            按位置筛选 {selectedLocation && `(${getLocationName(selectedLocation)})`}
           </Button>
           <Popover
             id={locationFilterId}
@@ -685,6 +689,7 @@ const ItemsPage = () => {
                     dense
                     button
                     onClick={() => handleLocationSelect('')}
+                    selected={selectedLocation === ''}
                   >
                     <ListItemIcon sx={{ minWidth: 36 }}>
                       <Checkbox
@@ -703,11 +708,12 @@ const ItemsPage = () => {
                       dense
                       button
                       onClick={() => handleLocationSelect(location.id)}
+                      selected={Number(selectedLocation) === location.id}
                     >
                       <ListItemIcon sx={{ minWidth: 36 }}>
                         <Checkbox
                           edge="start"
-                          checked={selectedLocation === location.id}
+                          checked={Number(selectedLocation) === location.id}
                           tabIndex={-1}
                           disableRipple
                           size="small"
@@ -744,7 +750,10 @@ const ItemsPage = () => {
         
         {/* 选中的类别标签展示 */}
         {selectedCategories.length > 0 && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: searchQuery ? 1 : 0 }}>
+            <Typography variant="body2" color="textSecondary" sx={{ mr: 1, alignSelf: 'center' }}>
+              已选类别:
+            </Typography>
             {selectedCategories.map((category) => (
               <Chip
                 key={category}
@@ -766,9 +775,12 @@ const ItemsPage = () => {
         
         {/* 选中的位置标签展示 */}
         {selectedLocation && (
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+            <Typography variant="body2" color="textSecondary" sx={{ mr: 1, alignSelf: 'center' }}>
+              已选位置:
+            </Typography>
             <Chip
-              label={`位置: ${getLocationName(selectedLocation)}`}
+              label={getLocationName(selectedLocation)}
               size="small"
               onDelete={() => {
                 setSelectedLocation('');

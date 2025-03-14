@@ -1,4 +1,4 @@
-# Created by https://www.toptal.com/developers/gitignore/api/python
+# Created by https://www.toptal.com/developers/gitignore/api/python的原则
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
 
 ### Python ###
@@ -218,3 +218,5 @@ tmp/
 # 缓存
 cache/
 
+.cursor/
+.cursorrules

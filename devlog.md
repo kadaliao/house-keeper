@@ -811,3 +811,43 @@
 2. `frontend/src/services/stats.js` - 前端统计服务。
 3. `frontend/src/pages/dashboard/DashboardPage.js` - 仪表盘页面组件。
 4. `frontend/src/pages/locations/LocationsPage.js` - 位置管理页面组件。
+
+## 2025-03-14 提高后端测试覆盖率
+
+### 会话目标
+提高后端代码的测试覆盖率，完善测试框架，确保代码质量。
+
+### 实现功能
+- 添加了pytest-cov依赖，用于生成代码覆盖率报告
+- 配置了pytest.ini文件，添加了覆盖率报告选项
+- 创建了.coveragerc配置文件，定义了覆盖率分析规则
+- 更新了测试脚本，使其能够生成和保存覆盖率报告
+- 创建了utils模块的测试，增加了对seed_db.py的测试覆盖
+
+### 关键技术决策
+- 使用pytest-cov作为覆盖率分析工具，支持生成HTML报告
+- 配置覆盖率分析规则，排除不需要测试的文件和代码
+- 采用测试驱动开发方法，先编写测试再实现功能
+- 在Docker容器中运行测试，确保测试环境一致性
+
+### 问题解决方案
+- 通过创建专门的测试模块，解决了utils模块缺少测试的问题
+- 通过配置.coveragerc文件，解决了覆盖率报告中包含不必要文件的问题
+- 通过更新测试脚本，解决了覆盖率报告保存和展示的问题
+- 通过Docker卷挂载，解决了容器内生成的报告在宿主机访问的问题
+
+### 采用技术栈
+- 测试框架：pytest, pytest-cov
+- 容器化：Docker, Docker Compose
+- 后端：FastAPI, SQLAlchemy
+
+### 涉及文件
+- 修改文件：
+  - `backend/requirements.txt`（添加pytest-cov依赖）
+  - `backend/pytest.ini`（配置覆盖率报告选项）
+  - `scripts/run_tests.sh`（更新测试脚本）
+  - `docker-compose-config/test.yml`（更新测试容器配置）
+- 新增文件：
+  - `backend/.coveragerc`（覆盖率分析配置）
+  - `backend/tests/utils/__init__.py`（测试包初始化）
+  - `backend/tests/utils/test_seed_db.py`（种子脚本测试）

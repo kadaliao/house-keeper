@@ -12,6 +12,9 @@ echo -e "${YELLOW}正在启动测试环境...${NC}"
 # 停止之前可能运行的测试容器
 docker-compose -f docker-compose.test.yml down -v 2>/dev/null || true
 
+# 创建覆盖率报告目录
+mkdir -p backend/coverage_reports
+
 # 启动测试数据库和后端测试容器
 echo -e "${YELLOW}启动 PostgreSQL 测试数据库...${NC}"
 docker-compose -f docker-compose.test.yml up -d test-db
@@ -28,7 +31,11 @@ docker-compose -f docker-compose.test.yml build backend-test
 echo -e "${GREEN}运行测试...${NC}"
 docker-compose -f docker-compose.test.yml run --rm backend-test
 
-# 测试完成后清理环境
+# 测试完成后显示报告位置
+echo -e "${GREEN}测试和覆盖率分析完成！${NC}"
+echo -e "${YELLOW}HTML覆盖率报告已生成在: backend/coverage_reports/${NC}"
+
+# 清理环境
 echo -e "${YELLOW}清理测试环境...${NC}"
 docker-compose -f docker-compose.test.yml down -v
 

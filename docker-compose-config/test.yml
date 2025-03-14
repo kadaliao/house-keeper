@@ -22,6 +22,7 @@ services:
       target: development
     volumes:
       - ../backend:/app
+      - ../backend/coverage_reports:/app/coverage_reports
       - /app/venv
       - /app/__pycache__
     environment:

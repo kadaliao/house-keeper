@@ -1,0 +1,21 @@
+[run]
+source = app
+omit = 
+    */tests/*
+    */alembic/*
+    */venv/*
+    */migrations/*
+    */settings.py
+    */constants.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if self.debug:
+    raise NotImplementedError
+    if 0:
+    if __name__ == .__main__.:
+
+[html]
+directory = coverage_reports 

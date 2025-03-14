@@ -112,8 +112,8 @@ const Home = () => {
       {/* Hero Section */}
       <Container maxWidth="lg">
         <Grid container spacing={4} alignItems="center" sx={{ mb: { xs: 6, md: 10 } }}>
-          <Grid item xs={12} md={6}>
-            <Box sx={{ p: { xs: 2, md: 4 } }}>
+          <Grid item xs={12} sx={{ textAlign: 'center' }}>
+            <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 800, mx: 'auto' }}>
               <Typography 
                 variant="h2" 
                 component="h1" 
@@ -138,7 +138,7 @@ const Home = () => {
               <Typography variant="body1" paragraph sx={{ mb: 4 }}>
                 家庭物品管理系统帮助您追踪所有家庭物品的位置、保修期和重要提醒，让您的家庭管理更加井井有条。
               </Typography>
-              <Stack direction="row" spacing={2}>
+              <Stack direction="row" spacing={2} justifyContent="center">
                 <Button 
                   component={Link} 
                   to="/login" 
@@ -171,23 +171,6 @@ const Home = () => {
                 </Button>
               </Stack>
             </Box>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Box 
-              component="img" 
-              src="/images/home-illustration.svg" 
-              alt="家庭物品管理" 
-              sx={{ 
-                width: '100%', 
-                height: 'auto',
-                maxWidth: 500,
-                mx: 'auto',
-                display: 'block',
-              }}
-              onError={(e) => {
-                e.target.src = 'https://placehold.co/500x400?text=家庭物品管理系统';
-              }}
-            />
           </Grid>
         </Grid>
 

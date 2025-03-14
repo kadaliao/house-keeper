@@ -76,63 +76,31 @@ const LoginPage = () => {
           justifyContent="center"
           sx={{ minHeight: '80vh' }}
         >
-          {/* 左侧图片/品牌区域 */}
-          <Grid
-            item
-            xs={12}
-            md={6}
-            sx={{
-              display: { xs: 'none', md: 'block' },
-              textAlign: 'center',
-            }}
-          >
-            <Box
+          {/* 左侧标题区域 */}
+          <Grid item xs={12} sx={{ textAlign: 'center', mb: 4 }}>
+            <Typography
+              variant="h3"
+              component="h1"
               sx={{
-                p: 4,
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignItems: 'center',
+                fontWeight: 700,
+                mb: 2,
+                background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
               }}
             >
-              <Typography
-                variant="h3"
-                component="h1"
-                sx={{
-                  fontWeight: 700,
-                  mb: 2,
-                  background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}
-              >
-                家庭物品管理系统
-              </Typography>
-              <Typography
-                variant="h6"
-                color="textSecondary"
-                sx={{ mb: 4, maxWidth: 400, mx: 'auto' }}
-              >
-                轻松管理您的家庭物品，告别杂乱无序
-              </Typography>
-              <Box
-                component="img"
-                src="/images/login-illustration.svg"
-                alt="登录插图"
-                sx={{
-                  maxWidth: '100%',
-                  height: 'auto',
-                  maxHeight: 400,
-                }}
-                onError={(e) => {
-                  e.target.src = 'https://placehold.co/500x400?text=家庭物品管理';
-                }}
-              />
-            </Box>
+              家庭物品管理系统
+            </Typography>
+            <Typography
+              variant="h6"
+              color="textSecondary"
+              sx={{ mb: 4, maxWidth: 600, mx: 'auto' }}
+            >
+              轻松管理您的家庭物品，告别杂乱无序
+            </Typography>
           </Grid>
 
-          {/* 右侧登录表单 */}
+          {/* 登录表单 */}
           <Grid item xs={12} md={6} sx={{ display: 'flex', justifyContent: 'center' }}>
             <Paper
               elevation={3}

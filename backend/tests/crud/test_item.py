@@ -229,8 +229,10 @@ class TestItemCRUD:
         
         # 测试按名称搜索包含"Laptop"的物品
         items = crud_item.search_by_name(db, name="Laptop", owner_id=test_user.id)
-        assert len(items) == 1
-        assert items[0].name == "Laptop"
+        assert len(items) == 2  # "Laptop"和"Computer Mouse"(其描述包含"laptop")
+        laptop_items = {item.name for item in items}
+        assert "Laptop" in laptop_items
+        assert "Computer Mouse" in laptop_items
         
         # 测试按描述搜索包含"computer"的物品 - 新增测试
         items = crud_item.search_by_name(db, name="computer", owner_id=test_user.id)

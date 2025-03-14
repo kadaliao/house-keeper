@@ -63,14 +63,15 @@ class CRUDItem(CRUDBase[Item, ItemCreate, ItemUpdate]):
         """
         通过名称或描述搜索物品
         """
+        search_term = f"%{name.lower()}%"
         return (
             db.query(self.model)
             .filter(
                 or_(
-                    Item.name.ilike(f"%{name}%"),
-                    Item.description.ilike(f"%{name}%")
+                    self.model.name.ilike(search_term),
+                    self.model.description.ilike(search_term)
                 ),
-                Item.owner_id == owner_id
+                self.model.owner_id == owner_id
             )
             .offset(skip)
             .limit(limit)

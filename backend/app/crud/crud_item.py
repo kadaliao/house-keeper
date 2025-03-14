@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from app.crud.base import CRUDBase
 from app.models.item import Item
@@ -36,6 +37,22 @@ class CRUDItem(CRUDBase[Item, ItemCreate, ItemUpdate]):
         return (
             db.query(self.model)
             .filter(Item.category == category, Item.owner_id == owner_id)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+    
+    def get_by_categories(
+        self, db: Session, *, categories: List[str], owner_id: int, skip: int = 0, limit: int = 100
+    ) -> List[Item]:
+        """
+        获取属于多个类别之一的物品
+        """
+        # 使用 OR 条件组合多个类别查询
+        category_filters = [Item.category == category for category in categories]
+        return (
+            db.query(self.model)
+            .filter(or_(*category_filters), Item.owner_id == owner_id)
             .offset(skip)
             .limit(limit)
             .all()

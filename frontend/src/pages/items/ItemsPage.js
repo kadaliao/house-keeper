@@ -113,6 +113,7 @@ const ItemsPage = () => {
         }
         
         if (selectedCategories.length > 0) {
+          // 使用新的 categories 参数，传递逗号分隔的类别列表
           params.categories = selectedCategories.join(',');
         }
         

@@ -8,6 +8,8 @@ from app.schemas.user import UserCreate
 from app.schemas.location import LocationCreate
 from app.models.item import Item
 from datetime import datetime, timezone
+from typing import List, Optional
+from sqlalchemy import or_
 
 
 class TestItemCRUD:
@@ -164,6 +166,38 @@ class TestItemCRUD:
             for item in items:
                 assert item.category == category
                 assert f"{category} Item" in item.name
+    
+    def test_get_by_categories(self, db: Session, test_user, test_location):
+        """测试获取多个类别的物品"""
+        # 创建不同类别的物品
+        categories = ["Food", "Electronics", "Clothing", "Books", "Tools"]
+        for i, category in enumerate(categories):
+            for j in range(2):
+                item_in = ItemCreate(
+                    name=f"{category} Item {j}",
+                    description=f"A {category} item",
+                    category=category,
+                    quantity=j+1,
+                    price=100.0 * (j+1),
+                    location_id=test_location.id
+                )
+                crud_item.create(db, obj_in=item_in, owner_id=test_user.id)
+        
+        # 测试获取多个类别的物品
+        selected_categories = ["Food", "Electronics", "Books"]
+        items = crud_item.get_by_categories(db, categories=selected_categories, owner_id=test_user.id)
+        
+        # 应该返回 3 个类别，每个类别 2 个物品，总共 6 个物品
+        assert len(items) == 6
+        
+        # 验证返回的物品类别是否正确
+        item_categories = [item.category for item in items]
+        for category in selected_categories:
+            assert item_categories.count(category) == 2
+        
+        # 验证未选择的类别物品没有返回
+        for category in ["Clothing", "Tools"]:
+            assert category not in item_categories
     
     def test_search_by_name(self, db: Session, test_user, test_location):
         """测试按名称搜索物品"""

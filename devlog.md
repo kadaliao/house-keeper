@@ -1,39 +1,38 @@
 # 家庭物品管理系统开发日志
 
-## 2025-03-15 数据库连接问题修复
+## 2025-03-14 实现物品多类别筛选功能
 
 ### 会话目标
-解决后端容器启动时出现的"role root does not exist"错误，确保后端成功连接到PostgreSQL数据库。
+修改后端代码，支持物品管理页面的多类别筛选功能。
 
 ### 实现功能
-- 实现了PostgreSQL数据库容器自动创建root用户的初始化脚本
-- 增强了后端启动脚本，增加数据库连接检查和重试机制
-- 优化了Alembic迁移配置，确保使用正确的数据库连接信息
+- 在后端 CRUD 层实现了多类别筛选方法
+- 修改了 API 端点，支持通过逗号分隔的类别字符串进行筛选
+- 更新了前端代码，使用新的参数格式发送多类别查询
+- 添加了相应的测试代码，确保功能正确性
 
 ### 关键技术决策
-- 在PostgreSQL容器中使用初始化脚本自动创建所需的用户
-- 在后端容器中安装PostgreSQL客户端工具，用于数据库连接测试
-- 标准化环境变量配置，确保所有组件使用一致的数据库连接信息
+- 在 CRUD 层使用 SQLAlchemy 的 `or_` 操作符实现多条件查询
+- 保留旧版 API 参数，确保向后兼容性
+- 前端多选组件保持不变，只修改参数传递方式
 
 ### 问题解决方案
-- 分析发现问题原因：Docker容器中的应用默认使用root用户运行，但PostgreSQL中并不存在对应的用户账号
-- 创建初始化脚本(01-init-users.sh)，在数据库启动时自动创建root用户
-- 增强后端启动脚本(start.sh)，添加数据库连接检查和错误处理
-- 更新Alembic环境配置，确保迁移时使用正确的数据库URL
+- 通过添加 `get_by_categories` 方法解决多类别筛选需求
+- 在 API 层优先处理 `categories` 参数，其次考虑其他筛选条件
+- 使用逗号分隔的字符串作为类别列表的传输格式，简化 API 设计
 
 ### 采用技术栈
-- 后端：Python, FastAPI, Alembic
-- 数据库：PostgreSQL
-- 容器化：Docker, Docker Compose
-- 脚本：Bash
+- 后端：FastAPI, SQLAlchemy, PostgreSQL
+- 前端：React, Material UI
+- 测试：pytest
 
 ### 涉及文件
-- docker-compose-config/dev.yml (修改)
-- docker-init-scripts/01-init-users.sh (新增)
-- backend/start.sh (修改)
-- backend/Dockerfile (修改)
-- backend/alembic/env.py (修改)
-- backend/.env (修改)
+- `backend/app/crud/crud_item.py`：添加 `get_by_categories` 方法
+- `backend/app/api/endpoints/items.py`：更新 `read_items` 端点
+- `frontend/src/pages/items/ItemsPage.js`：修改查询参数传递方式
+- `backend/tests/crud/test_item.py`：添加 `test_get_by_categories` 测试
+- `backend/tests/api/test_items.py`：添加 `test_get_items_by_categories` 测试
+
 
 ## 2025-03-14 恢复登录和主页左右布局
 

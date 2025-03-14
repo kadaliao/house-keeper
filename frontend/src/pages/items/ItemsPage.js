@@ -101,74 +101,104 @@ const ItemsPage = () => {
     const locationId = queryParams.get('location_id');
     
     if (locationId) {
+      console.log('从URL参数检测到位置ID:', locationId);
       setSelectedLocation(Number(locationId));
+      
+      // 如果位置列表已加载，立即触发筛选
+      if (locations.length > 0) {
+        console.log('位置数据已加载，立即应用筛选');
+        // 不需要额外操作，selectedLocation变化会触发筛选useEffect
+      }
     }
-  }, [location.search]);
+  }, [location.search, locations.length]);
 
   // 获取所有物品和位置
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [itemsData, locationsData, locationTreeData] = await Promise.all([
-        getItems(),
+      
+      // 获取所有位置信息
+      const [locationsData, locationTreeData] = await Promise.all([
         getLocations(),
         getLocationTree()
       ]);
       
-      console.log('获取到的位置树数据:', locationTreeData); // 添加调试日志
-      
-      setItems(itemsData);
       setLocations(locationsData);
       setLocationTree(locationTreeData);
       
-      // 提取并存储所有可用的类别
-      const categories = [...new Set(itemsData.map(item => item.category).filter(Boolean))];
-      setAllCategories(categories);
+      // 从URL参数获取edit
+      const queryParams = new URLSearchParams(location.search);
+      const editId = queryParams.get('edit');
       
-      setError(null);
-    } catch (err) {
-      console.error('获取数据失败:', err);
-      setError('获取数据失败，请稍后重试');
+      // 如果有编辑参数，直接获取该物品打开编辑对话框
+      if (editId) {
+        try {
+          const itemData = await getItem(Number(editId));
+          console.log('获取到要编辑的物品:', itemData);
+          if (itemData) {
+            setEditingItem(itemData);
+            setFormData({
+              name: itemData.name,
+              description: itemData.description || '',
+              category: itemData.category || '',
+              quantity: itemData.quantity || 1,
+              price: itemData.price || '',
+              purchase_date: itemData.purchase_date ? new Date(itemData.purchase_date) : null,
+              expiry_date: itemData.expiry_date ? new Date(itemData.expiry_date) : null,
+              location_id: itemData.location_id || '',
+              image_url: itemData.image_url || ''
+            });
+            setImagePreview(itemData.image_url || null);
+            setOpenDialog(true);
+          } else {
+            // 如果未找到物品，显示错误提示
+            setSnackbar({
+              open: true,
+              message: '未找到该物品',
+              severity: 'error'
+            });
+          }
+        } catch (error) {
+          console.error('获取物品详情失败:', error);
+          setSnackbar({
+            open: true,
+            message: '获取物品详情失败',
+            severity: 'error'
+          });
+        }
+      }
+
+      // 如果没有筛选条件，则获取所有物品
+      if (!searchQuery && selectedCategories.length === 0 && !selectedLocation) {
+        const itemsData = await getItems();
+        setItems(itemsData);
+        
+        // 提取所有可用的类别
+        const categories = [...new Set(itemsData.map(item => item.category).filter(Boolean))];
+        setAllCategories(categories);
+      }
+    } catch (error) {
+      setError('加载数据失败，请稍后再试');
+      console.error('加载数据失败:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // 首次加载时获取数据
+  // 初始加载数据 - 只在组件挂载时执行一次
   useEffect(() => {
     fetchData();
-    
-    // 检查URL中是否有edit参数
-    const queryParams = new URLSearchParams(location.search);
-    const editItemId = queryParams.get('edit');
-    
-    if (editItemId) {
-      // 直接通过API获取物品，不依赖当前列表
-      const loadAndOpenEditor = async () => {
-        try {
-          const itemId = parseInt(editItemId);
-          const itemToEdit = await getItem(itemId);
-          handleOpenEditDialog(itemToEdit);
-          // 清除URL参数，避免刷新页面时重复打开对话框
-          navigate('/items', { replace: true });
-        } catch (err) {
-          console.error('获取物品详情失败:', err);
-          setSnackbar({
-            open: true,
-            message: `未找到ID为${editItemId}的物品`,
-            severity: 'error'
-          });
-          navigate('/items', { replace: true });
-        }
-      };
-      
-      loadAndOpenEditor();
-    }
-  }, [location.search]); // 移除items.length依赖
+  }, []); // 移除location.search依赖，避免与筛选冲突
 
   // 查询过滤
   useEffect(() => {
     console.log('筛选条件变化 - 搜索:', searchQuery, '类别:', selectedCategories, '位置:', selectedLocation);
+    
+    // 如果所有筛选条件都为空且物品列表已有数据，则不重复获取
+    if (!searchQuery && selectedCategories.length === 0 && !selectedLocation && items.length > 0) {
+      console.log('没有筛选条件，并且物品列表已有数据，不进行筛选');
+      return;
+    }
     
     const fetchFilteredItems = async () => {
       try {
@@ -196,23 +226,14 @@ const ItemsPage = () => {
         const filteredItems = await searchItems(params);
         console.log('筛选结果:', filteredItems); // 添加调试日志
         
-        // 如果后端API未正确处理交集，我们在前端再次筛选确保结果正确
-        let finalFilteredItems = [...filteredItems];
+        setItems(filteredItems);
         
-        // 如果后端未正确处理筛选条件的交集，在前端进行二次筛选
-        // 这是一个防御性编程措施
-        if (selectedCategories.length > 0 && selectedLocation) {
-          finalFilteredItems = filteredItems.filter(item => {
-            const matchesCategory = selectedCategories.includes(item.category);
-            const matchesLocation = Number(item.location_id) === Number(selectedLocation);
-            return matchesCategory && matchesLocation;
-          });
-          console.log('前端二次筛选后的结果:', finalFilteredItems);
+        // 如果还没有设置allCategories或allCategories为空，则从筛选结果提取类别
+        if (allCategories.length === 0) {
+          // 提取并存储所有可用的类别
+          const categories = [...new Set(filteredItems.map(item => item.category).filter(Boolean))];
+          setAllCategories(categories);
         }
-        
-        setItems(finalFilteredItems);
-        
-        // 注意: 不要在这里更新allCategories，我们希望保留完整的类别列表
       } catch (err) {
         console.error('搜索物品失败:', err);
         setError('搜索物品失败，请稍后重试');

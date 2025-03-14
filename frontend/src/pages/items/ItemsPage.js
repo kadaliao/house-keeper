@@ -528,7 +528,7 @@ const ItemsPage = () => {
                     alt={item.name}
                     onError={(e) => {
                       console.error('图片加载失败:', item.image_url);
-                      e.target.src = 'https://via.placeholder.com/400x160?text=图片加载失败';
+                      e.target.src = 'https://placehold.co/400x160?text=图片加载失败';
                     }}
                     sx={{ objectFit: 'cover' }}
                   />
@@ -729,7 +729,7 @@ const ItemsPage = () => {
                       }}
                       onError={(e) => {
                         console.error('图片预览加载失败:', imagePreview || formData.image_url);
-                        e.target.src = 'https://via.placeholder.com/200?text=图片加载失败';
+                        e.target.src = 'https://placehold.co/200?text=图片加载失败';
                       }}
                     />
                     <IconButton 

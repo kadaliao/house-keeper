@@ -126,7 +126,7 @@ const LoginPage = () => {
                   maxHeight: 400,
                 }}
                 onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/500x400?text=家庭物品管理';
+                  e.target.src = 'https://placehold.co/500x400?text=家庭物品管理';
                 }}
               />
             </Box>

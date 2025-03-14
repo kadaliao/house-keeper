@@ -1,5 +1,29 @@
 # 家庭物品管理系统开发日志
 
+## 2025-03-14 更新图片占位符服务
+
+### 会话目标
+将所有前端页面中使用的 via.placeholder.com 替换为 placehold.co。
+
+### 实现功能
+- 替换了所有前端代码中的图片占位符服务 URL
+
+### 关键技术决策
+- 从 via.placeholder.com 切换到 placehold.co 作为图片占位符服务
+- 保持了原有的尺寸和文本参数格式不变
+
+### 问题解决方案
+- 通过代码搜索查找所有使用 via.placeholder.com 的地方
+- 精确替换每个实例，确保尺寸和文本参数保持一致
+
+### 采用技术栈
+- 前端：React
+
+### 涉及文件
+- frontend/src/pages/items/ItemsPage.js
+- frontend/src/pages/Home.js
+- frontend/src/pages/auth/LoginPage.js
+
 ## 2025-03-14 修复数据库连接问题
 
 ### 会话目标

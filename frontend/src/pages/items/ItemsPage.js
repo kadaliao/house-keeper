@@ -97,20 +97,60 @@ const ItemsPage = () => {
   
   // 从URL参数获取location_id
   useEffect(() => {
+    // 清除之前的操作，防止重复触发
     const queryParams = new URLSearchParams(location.search);
     const locationId = queryParams.get('location_id');
     
     if (locationId) {
       console.log('从URL参数检测到位置ID:', locationId);
+      // 设置位置筛选条件
       setSelectedLocation(Number(locationId));
       
-      // 如果位置列表已加载，立即触发筛选
-      if (locations.length > 0) {
+      // 如果位置列表和物品列表已加载，直接触发筛选
+      if (locations.length > 0 && !loading) {
         console.log('位置数据已加载，立即应用筛选');
-        // 不需要额外操作，selectedLocation变化会触发筛选useEffect
+        // 手动触发筛选，避免依赖状态改变的timing问题
+        const fetchFilteredItemsForLocation = async () => {
+          try {
+            setIsFiltering(true);
+            console.log('手动触发位置筛选，位置ID:', locationId);
+            
+            // 构建筛选参数
+            let params = { location_id: Number(locationId) };
+            
+            // 如果已有类别筛选，同时应用类别条件
+            if (selectedCategories && selectedCategories.length > 0) {
+              params.categories = selectedCategories.join(',');
+              console.log('同时应用类别筛选:', params.categories);
+            }
+            
+            // 获取后端筛选结果
+            const filteredItems = await searchItems(params);
+            console.log('位置筛选结果数量:', filteredItems.length);
+            
+            // 如果同时有类别和位置条件，确保在前端强制执行交集逻辑
+            let finalItems = filteredItems;
+            if (selectedCategories.length > 0) {
+              console.log('需要在前端执行交集过滤');
+              finalItems = filteredItems.filter(item => {
+                const matchesCategory = selectedCategories.includes(item.category);
+                const matchesLocation = Number(item.location_id) === Number(locationId);
+                return matchesCategory && matchesLocation;
+              });
+              console.log('交集过滤后的结果数量:', finalItems.length);
+            }
+            
+            setItems(finalItems);
+          } catch (err) {
+            console.error('位置筛选失败:', err);
+          } finally {
+            setIsFiltering(false);
+          }
+        };
+        fetchFilteredItemsForLocation();
       }
     }
-  }, [location.search, locations.length]);
+  }, [location.search, locations.length, loading]);
 
   // 获取所有物品和位置
   const fetchData = async () => {
@@ -125,6 +165,12 @@ const ItemsPage = () => {
       
       setLocations(locationsData);
       setLocationTree(locationTreeData);
+      
+      // 获取所有可用的类别（无论筛选条件如何）
+      // 获取部分物品提取类别信息
+      const someItems = await getItems({ limit: 100 });  // 只获取部分物品以提取类别
+      const categories = [...new Set(someItems.map(item => item.category).filter(Boolean))];
+      setAllCategories(categories);
       
       // 从URL参数获取edit
       const queryParams = new URLSearchParams(location.search);
@@ -168,14 +214,18 @@ const ItemsPage = () => {
         }
       }
 
+      // 检查是否有筛选条件
+      const hasFilters = searchQuery || selectedCategories.length > 0 || selectedLocation;
+      
       // 如果没有筛选条件，则获取所有物品
-      if (!searchQuery && selectedCategories.length === 0 && !selectedLocation) {
+      // 如果有URL中的location_id，则不再加载所有物品，等待筛选useEffect执行
+      const locationId = queryParams.get('location_id');
+      if (!hasFilters && !locationId) {
+        console.log('没有筛选条件，加载所有物品');
         const itemsData = await getItems();
         setItems(itemsData);
-        
-        // 提取所有可用的类别
-        const categories = [...new Set(itemsData.map(item => item.category).filter(Boolean))];
-        setAllCategories(categories);
+      } else {
+        console.log('有筛选条件或位置参数，不加载所有物品');
       }
     } catch (error) {
       setError('加载数据失败，请稍后再试');
@@ -218,22 +268,28 @@ const ItemsPage = () => {
         if (selectedLocation && selectedLocation !== '') {
           // 确保location_id是数字类型
           params.location_id = Number(selectedLocation);
+          console.log('添加位置筛选参数:', params.location_id);
         }
         
         console.log('发送筛选请求，参数:', params); // 添加调试日志
         
         // 获取后端筛选结果
         const filteredItems = await searchItems(params);
-        console.log('筛选结果:', filteredItems); // 添加调试日志
+        console.log('筛选结果:', filteredItems, '条目数:', filteredItems.length); // 添加调试日志
         
-        setItems(filteredItems);
-        
-        // 如果还没有设置allCategories或allCategories为空，则从筛选结果提取类别
-        if (allCategories.length === 0) {
-          // 提取并存储所有可用的类别
-          const categories = [...new Set(filteredItems.map(item => item.category).filter(Boolean))];
-          setAllCategories(categories);
+        // 如果同时有类别和位置条件，确保在前端强制执行交集逻辑
+        let finalItems = filteredItems;
+        if (selectedCategories.length > 0 && selectedLocation) {
+          console.log('同时有类别和位置筛选条件，在前端执行交集过滤');
+          finalItems = filteredItems.filter(item => {
+            const matchesCategory = selectedCategories.includes(item.category);
+            const matchesLocation = Number(item.location_id) === Number(selectedLocation);
+            return matchesCategory && matchesLocation;
+          });
+          console.log('交集过滤后的结果数量:', finalItems.length);
         }
+        
+        setItems(finalItems);
       } catch (err) {
         console.error('搜索物品失败:', err);
         setError('搜索物品失败，请稍后重试');
@@ -245,8 +301,10 @@ const ItemsPage = () => {
     // 只有在页面已加载完成后才执行筛选
     if (!loading) {
       fetchFilteredItems();
+    } else {
+      console.log('页面加载中，暂不执行筛选');
     }
-  }, [searchQuery, selectedCategories, selectedLocation]);
+  }, [searchQuery, selectedCategories, selectedLocation, loading]);
 
   // 获取所有类别 - 这个函数现在可以直接返回allCategories
   const getCategories = () => {

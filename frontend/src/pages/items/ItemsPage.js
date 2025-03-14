@@ -244,9 +244,33 @@ const ItemsPage = () => {
   useEffect(() => {
     console.log('筛选条件变化 - 搜索:', searchQuery, '类别:', selectedCategories, '位置:', selectedLocation);
     
-    // 如果所有筛选条件都为空且物品列表已有数据，则不重复获取
-    if (!searchQuery && selectedCategories.length === 0 && !selectedLocation && items.length > 0) {
-      console.log('没有筛选条件，并且物品列表已有数据，不进行筛选');
+    // 如果所有筛选条件都为空且物品列表已有数据，则重新获取所有数据
+    if (!searchQuery && selectedCategories.length === 0 && !selectedLocation) {
+      // 如果已经有物品数据，不重复获取
+      if (items.length > 0) {
+        console.log('没有筛选条件，并且物品列表已有数据，不进行筛选');
+        return;
+      }
+      
+      // 如果没有物品数据，获取所有物品
+      console.log('没有筛选条件，并且物品列表为空，获取所有物品');
+      const fetchAllItems = async () => {
+        try {
+          setIsFiltering(true);
+          const allItems = await getItems();
+          setItems(allItems);
+        } catch (err) {
+          console.error('获取所有物品失败:', err);
+          setError('获取物品失败，请稍后重试');
+        } finally {
+          setIsFiltering(false);
+        }
+      };
+      
+      // 只有在页面已加载完成后才执行
+      if (!loading) {
+        fetchAllItems();
+      }
       return;
     }
     
@@ -683,10 +707,23 @@ const ItemsPage = () => {
   };
 
   // 清除所有筛选
-  const clearAllFilters = () => {
+  const clearAllFilters = async () => {
+    console.log('清除所有筛选');
     setSearchQuery('');
     setSelectedCategories([]);
     setSelectedLocation('');
+    
+    // 重新加载所有物品
+    try {
+      setIsFiltering(true);
+      const allItems = await getItems();
+      setItems(allItems);
+    } catch (err) {
+      console.error('重新加载所有物品失败:', err);
+      setError('重新加载物品失败，请稍后重试');
+    } finally {
+      setIsFiltering(false);
+    }
   };
 
   // 更新类别筛选器按钮的样式和文本
@@ -793,7 +830,12 @@ const ItemsPage = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', p: 1 }}>
               <Button 
                 size="small" 
-                onClick={() => setSelectedCategories([])}
+                onClick={() => {
+                  console.log('清除类别筛选 (弹窗内)');
+                  setSelectedCategories([]);
+                  // 确保关闭类别选择弹窗
+                  setCategoryAnchorEl(null);
+                }}
                 disabled={selectedCategories.length === 0}
               >
                 清除
@@ -865,6 +907,7 @@ const ItemsPage = () => {
               <Button 
                 size="small" 
                 onClick={() => {
+                  console.log('清除位置筛选 (弹窗内)');
                   setSelectedLocation('');
                   handleLocationFilterClose();
                 }}
@@ -890,7 +933,43 @@ const ItemsPage = () => {
               <Button
                 variant="text"
                 size="small"
-                onClick={() => setSelectedCategories([])}
+                onClick={async () => {
+                  console.log('清除类别筛选');
+                  setSelectedCategories([]);
+                  // 确保关闭类别选择弹窗
+                  setCategoryAnchorEl(null);
+                  
+                  // 如果有其他筛选条件，使用这些条件进行筛选
+                  try {
+                    setIsFiltering(true);
+                    let params = {};
+                    
+                    if (searchQuery) {
+                      params.search = searchQuery;
+                    }
+                    
+                    if (selectedLocation && selectedLocation !== '') {
+                      params.location_id = Number(selectedLocation);
+                    }
+                    
+                    // 如果有其他筛选条件，使用筛选接口
+                    if (Object.keys(params).length > 0) {
+                      console.log('清除类别后使用其他条件筛选:', params);
+                      const filteredItems = await searchItems(params);
+                      setItems(filteredItems);
+                    } else {
+                      // 如果没有其他筛选条件，获取所有物品
+                      console.log('清除类别后获取所有物品');
+                      const allItems = await getItems();
+                      setItems(allItems);
+                    }
+                  } catch (err) {
+                    console.error('清除类别筛选后获取物品失败:', err);
+                    setError('获取物品失败，请稍后重试');
+                  } finally {
+                    setIsFiltering(false);
+                  }
+                }}
               >
                 清除类别筛选
               </Button>
@@ -900,7 +979,43 @@ const ItemsPage = () => {
               <Button
                 variant="text"
                 size="small"
-                onClick={() => setSelectedLocation('')}
+                onClick={async () => {
+                  console.log('清除位置筛选');
+                  setSelectedLocation('');
+                  // 确保关闭位置选择弹窗
+                  setLocationAnchorEl(null);
+                  
+                  // 如果有其他筛选条件，使用这些条件进行筛选
+                  try {
+                    setIsFiltering(true);
+                    let params = {};
+                    
+                    if (searchQuery) {
+                      params.search = searchQuery;
+                    }
+                    
+                    if (selectedCategories && selectedCategories.length > 0) {
+                      params.categories = selectedCategories.join(',');
+                    }
+                    
+                    // 如果有其他筛选条件，使用筛选接口
+                    if (Object.keys(params).length > 0) {
+                      console.log('清除位置后使用其他条件筛选:', params);
+                      const filteredItems = await searchItems(params);
+                      setItems(filteredItems);
+                    } else {
+                      // 如果没有其他筛选条件，获取所有物品
+                      console.log('清除位置后获取所有物品');
+                      const allItems = await getItems();
+                      setItems(allItems);
+                    }
+                  } catch (err) {
+                    console.error('清除位置筛选后获取物品失败:', err);
+                    setError('获取物品失败，请稍后重试');
+                  } finally {
+                    setIsFiltering(false);
+                  }
+                }}
               >
                 清除位置筛选
               </Button>

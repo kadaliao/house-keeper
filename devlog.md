@@ -375,7 +375,7 @@
 - `frontend/src/pages/dashboard/DashboardPage.js`：修改提醒卡片组件，添加跳转功能
 - `frontend/src/pages/reminders/RemindersPage.js`：添加从路由状态读取标签值的功能
 
-## 2025-03-16 修复物品管理页面筛选功能问题
+## 2025-03-14 修复物品管理页面筛选功能问题
 
 ### 会话目标
 修复物品管理页面中清除类别筛选功能不起作用的问题。
